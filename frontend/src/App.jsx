@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { DataProvider } from './context/DataContext';
+import React, { useState, useEffect } from 'react';
+import { DataProvider, useData } from './context/DataContext';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { PillNav } from './components/PillNav';
@@ -20,10 +20,17 @@ import { CustomerPortalPage } from './pages/CustomerPortalPage';
 
 function MainApp() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { activeRole } = useData();
+  const [activeTab, setActiveTab] = useState(activeRole === 'customer' ? 'portal' : 'dashboard');
   const [activeInvoice, setActiveInvoice] = useState(null);
   const [paymentInvoice, setPaymentInvoice] = useState(null);
   const [showNewSubModal, setShowNewSubModal] = useState(false);
+
+  useEffect(() => {
+    if (activeRole === 'customer' && activeTab !== 'portal') {
+      setActiveTab('portal');
+    }
+  }, [activeRole, activeTab]);
 
   const handleOpenInvoice = (inv) => {
     setActiveInvoice(inv);

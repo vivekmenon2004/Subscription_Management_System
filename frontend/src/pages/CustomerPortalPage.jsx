@@ -3,7 +3,8 @@ import {
   User, CheckCircle, Pause, Play, RefreshCw, XCircle, 
   FileText, Download, Lock, Building, Phone, Mail, Check, AlertCircle,
   Globe, Monitor, ExternalLink, ShieldCheck, Key, Laptop, AlertOctagon,
-  Copy, CheckCircle2, Clock, Sparkles, HelpCircle, Layers
+  Copy, CheckCircle2, Clock, Sparkles, HelpCircle, Layers,
+  ChevronLeft, ChevronRight, Sliders, LayoutGrid, Calendar
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
@@ -36,6 +37,22 @@ export function CustomerPortalPage({ onOpenInvoice }) {
   const [webSuccessModal, setWebSuccessModal] = useState(null); // { prod, sub, launchUrl, token, entitlements }
   const [launchError, setLaunchError] = useState(null);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Subscriptions Slide Animation View states
+  const [viewMode, setViewMode] = useState('slider'); // 'slider' | 'grid'
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+  const nextSlide = () => {
+    if (mySubscriptions.length > 0) {
+      setCurrentSlideIndex(prev => (prev + 1) % mySubscriptions.length);
+    }
+  };
+
+  const prevSlide = () => {
+    if (mySubscriptions.length > 0) {
+      setCurrentSlideIndex(prev => (prev - 1 + mySubscriptions.length) % mySubscriptions.length);
+    }
+  };
 
   // Profile Form state
   const [name, setName] = useState(currentUser.name);
@@ -550,76 +567,327 @@ export function CustomerPortalPage({ onOpenInvoice }) {
       {/* ======================================================== */}
       {activeTab === 'subs' && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-[#25232A]">Active & Past Subscriptions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {mySubscriptions.map(sub => (
-              <div key={sub.id} className="bg-white rounded-2xl border border-[#E8E6EB] p-5 shadow-card flex flex-col justify-between space-y-4">
-                <div>
-                  <div className="flex justify-between items-start">
-                    <span className="font-mono text-xs font-semibold text-[#714B67]">{sub.number}</span>
-                    <StatusBadge status={sub.status} isPaused={sub.is_paused} />
-                  </div>
-                  <h4 className="font-bold text-base text-[#25232A] mt-2">{sub.plan_details?.name}</h4>
-                  <p className="text-xl font-black text-[#25232A] mt-1 tabular-nums">
-                    ₹{sub.total_recurring_amount}
-                    <span className="text-xs font-normal text-[#6E6B75]"> / {sub.plan_details?.billing_period}</span>
-                  </p>
-                </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-bold text-[#25232A]">Active & Past Subscriptions</h3>
+              <p className="text-xs text-[#6E6B75]">Browse your ongoing contracts and self-service options.</p>
+            </div>
 
-                <div className="bg-[#FAF9FB] p-3 rounded-xl border border-[#E8E6EB] space-y-1 text-xs">
-                  <div className="flex justify-between text-[#6E6B75]">
-                    <span>Next Billing Date:</span>
-                    <span className="font-medium text-[#25232A]">{sub.next_billing_date || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between text-[#6E6B75]">
-                    <span>Expiry Date:</span>
-                    <span className="font-medium text-[#25232A]">{sub.expiry_date || 'Ongoing'}</span>
-                  </div>
-                  <div className="flex justify-between text-[#6E6B75]">
-                    <span>Included Lines:</span>
-                    <span className="font-medium text-[#25232A]">{sub.lines.length} service(s)</span>
-                  </div>
-                </div>
-
-                {/* Self service controls (PORT-3) */}
-                {sub.status === 'Active' && (
-                  <div className="pt-2 border-t border-[#E8E6EB] flex items-center justify-between gap-2">
-                    {sub.plan_details?.pausable && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        icon={sub.is_paused ? Play : Pause}
-                        onClick={() => togglePauseSubscription(sub.id)}
-                      >
-                        {sub.is_paused ? 'Resume' : 'Pause'}
-                      </Button>
-                    )}
-                    {sub.plan_details?.renewable && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        icon={RefreshCw}
-                        onClick={() => renewSubscription(sub.id)}
-                      >
-                        Renew
-                      </Button>
-                    )}
-                    {sub.plan_details?.closable && (
-                      <Button
-                        variant="outlined"
-                        size="sm"
-                        icon={XCircle}
-                        className="text-[#DC2626] border-[#FECACA] hover:bg-[#FEE2E2]"
-                        onClick={() => closeSubscription(sub.id, 'Cancelled by customer via self-service portal')}
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
+            {/* View Mode Switcher: Slide Animation vs Grid */}
+            <div className="flex items-center gap-1 bg-[#F3F2F5] p-1 rounded-xl border border-[#E8E6EB] self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setViewMode('slider')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                  viewMode === 'slider' 
+                    ? 'bg-[#714B67] text-white shadow-sm' 
+                    : 'text-[#6E6B75] hover:text-[#25232A]'
+                }`}
+                title="Slide Animation View"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Slide Animation</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                  viewMode === 'grid' 
+                    ? 'bg-[#714B67] text-white shadow-sm' 
+                    : 'text-[#6E6B75] hover:text-[#25232A]'
+                }`}
+                title="Grid Cards View"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Grid View</span>
+              </button>
+            </div>
           </div>
+
+          {mySubscriptions.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-[#E8E6EB] p-8 text-center space-y-2">
+              <p className="text-sm font-semibold text-[#25232A]">No subscriptions found</p>
+              <p className="text-xs text-[#6E6B75]">You do not currently have any active subscriptions.</p>
+            </div>
+          ) : viewMode === 'slider' ? (
+            /* SLIDE ANIMATION VIEW (Interactive Subscription Carousel) */
+            <div className="relative">
+              {/* Carousel Slide Card */}
+              {(() => {
+                const sub = mySubscriptions[currentSlideIndex] || mySubscriptions[0];
+                const stages = ['Draft', 'Quotation', 'Confirmed', 'Active'];
+                const stageIndex = stages.indexOf(sub.status);
+                const currentStageNum = stageIndex >= 0 ? stageIndex + 1 : (sub.status === 'Closed' ? 5 : 4);
+
+                return (
+                  <div 
+                    key={sub.id}
+                    className="bg-white rounded-2xl border border-[#E8E6EB] p-6 shadow-elevated space-y-6 transition-all duration-300 ease-out transform"
+                  >
+                    {/* Slide Top Navigation Header */}
+                    <div className="flex items-center justify-between border-b border-[#E8E6EB] pb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-[#F5EEF3] text-[#714B67] border border-[#E8DCE5]">
+                          {sub.number}
+                        </span>
+                        <StatusBadge status={sub.status} isPaused={sub.is_paused} />
+                      </div>
+
+                      {/* Slide Controls */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-[#6E6B75] tabular-nums">
+                          {currentSlideIndex + 1} of {mySubscriptions.length}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={prevSlide}
+                            className="p-1.5 rounded-lg border border-[#E8E6EB] text-[#6E6B75] hover:bg-[#FAF9FB] hover:text-[#25232A] transition-colors"
+                            aria-label="Previous subscription slide"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={nextSlide}
+                            className="p-1.5 rounded-lg border border-[#E8E6EB] text-[#6E6B75] hover:bg-[#FAF9FB] hover:text-[#25232A] transition-colors"
+                            aria-label="Next subscription slide"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Main Slide Card Content */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                      {/* Left: Plan Info & Big Pricing */}
+                      <div className="lg:col-span-1 space-y-4">
+                        <div>
+                          <p className="text-xs font-semibold text-[#8C4673] uppercase tracking-wider">Plan & Package</p>
+                          <h4 className="text-2xl font-bold text-[#25232A] mt-1">{sub.plan_details?.name || 'Subscription'}</h4>
+                          <div className="mt-3">
+                            <span className="text-3xl font-black text-[#714B67] tabular-nums">
+                              ₹{sub.total_recurring_amount}
+                            </span>
+                            <span className="text-xs font-medium text-[#6E6B75]"> / {sub.plan_details?.billing_period || 'month'}</span>
+                          </div>
+                        </div>
+
+                        {/* Dates info box */}
+                        <div className="bg-[#FAF9FB] p-3.5 rounded-xl border border-[#E8E6EB] space-y-2 text-xs">
+                          <div className="flex items-center justify-between text-[#6E6B75]">
+                            <span className="flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5" /> Next Billing
+                            </span>
+                            <span className="font-semibold text-[#25232A]">{sub.next_billing_date || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[#6E6B75]">
+                            <span className="flex items-center gap-1.5">
+                              <Clock className="w-3.5 h-3.5" /> Expiry Date
+                            </span>
+                            <span className="font-semibold text-[#25232A]">{sub.expiry_date || 'Auto-renewing'}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[#6E6B75]">
+                            <span>Payment Terms</span>
+                            <span className="font-medium text-[#25232A] capitalize">
+                              {sub.payment_terms?.replace('_', ' ') || '30 days'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Lifecycle Timeline & Service Lines */}
+                      <div className="lg:col-span-2 space-y-5">
+                        {/* 4-Stage Lifecycle Timeline */}
+                        <div>
+                          <p className="text-xs font-semibold text-[#6E6B75] mb-2.5">Subscription Lifecycle Stage</p>
+                          <div className="grid grid-cols-4 gap-2">
+                            {stages.map((st, idx) => {
+                              const isCompleted = currentStageNum > idx + 1;
+                              const isCurrent = currentStageNum === idx + 1;
+                              return (
+                                <div key={st} className="space-y-1.5 text-center">
+                                  <div className={`h-2 rounded-full transition-all duration-300 ${
+                                    isCompleted || isCurrent 
+                                      ? 'bg-[#714B67]' 
+                                      : 'bg-[#EAE8ED]'
+                                  }`} />
+                                  <p className={`text-[11px] font-medium leading-none ${
+                                    isCurrent 
+                                      ? 'text-[#714B67] font-bold' 
+                                      : isCompleted 
+                                      ? 'text-[#25232A]' 
+                                      : 'text-[#9A97A2]'
+                                  }`}>
+                                    {st}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Included Services / Products list */}
+                        <div>
+                          <p className="text-xs font-semibold text-[#6E6B75] mb-2">
+                            Included Services & Add-ons ({sub.lines?.length || 0})
+                          </p>
+                          <div className="border border-[#E8E6EB] rounded-xl overflow-hidden divide-y divide-[#E8E6EB]">
+                            {sub.lines?.map((line, idx) => (
+                              <div key={idx} className="p-3 bg-white flex items-center justify-between text-xs hover:bg-[#FAF9FB]">
+                                <div>
+                                  <p className="font-medium text-[#25232A]">{line.product_name}</p>
+                                  <p className="text-[11px] text-[#6E6B75]">
+                                    Qty: <span className="font-semibold text-[#25232A]">{line.quantity}</span> × ₹{line.unit_price}
+                                  </p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-bold text-[#714B67] tabular-nums">₹{line.amount}</p>
+                                  {line.tax_rate && (
+                                    <p className="text-[10px] text-[#9A97A2]">+ {line.tax_rate}% GST</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Actions Bar (PORT-3) */}
+                    <div className="pt-4 border-t border-[#E8E6EB] flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        {sub.status === 'Active' && (
+                          <>
+                            {sub.plan_details?.pausable && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={sub.is_paused ? Play : Pause}
+                                onClick={() => togglePauseSubscription(sub.id)}
+                              >
+                                {sub.is_paused ? 'Resume Subscription' : 'Pause Subscription'}
+                              </Button>
+                            )}
+                            {sub.plan_details?.renewable && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={RefreshCw}
+                                onClick={() => renewSubscription(sub.id)}
+                              >
+                                Renew Cycle
+                              </Button>
+                            )}
+                            {sub.plan_details?.closable && (
+                              <Button
+                                variant="outlined"
+                                size="sm"
+                                icon={XCircle}
+                                className="text-[#DC2626] border-[#FECACA] hover:bg-[#FEE2E2]"
+                                onClick={() => closeSubscription(sub.id, 'Cancelled by customer via self-service portal')}
+                              >
+                                Cancel Subscription
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Pagination Dot Navigation */}
+                      <div className="flex items-center gap-1.5">
+                        {mySubscriptions.map((_, dotIdx) => (
+                          <button
+                            key={dotIdx}
+                            type="button"
+                            onClick={() => setCurrentSlideIndex(dotIdx)}
+                            aria-label={`Go to slide ${dotIdx + 1}`}
+                            className={`h-2.5 rounded-full transition-all duration-300 ${
+                              dotIdx === currentSlideIndex 
+                                ? 'w-6 bg-[#714B67]' 
+                                : 'w-2.5 bg-[#D7D4DC] hover:bg-[#B4AFBD]'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            /* TRADITIONAL GRID VIEW */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {mySubscriptions.map(sub => (
+                <div key={sub.id} className="bg-white rounded-2xl border border-[#E8E6EB] p-5 shadow-card flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <span className="font-mono text-xs font-semibold text-[#714B67]">{sub.number}</span>
+                      <StatusBadge status={sub.status} isPaused={sub.is_paused} />
+                    </div>
+                    <h4 className="font-bold text-base text-[#25232A] mt-2">{sub.plan_details?.name}</h4>
+                    <p className="text-xl font-black text-[#25232A] mt-1 tabular-nums">
+                      ₹{sub.total_recurring_amount}
+                      <span className="text-xs font-normal text-[#6E6B75]"> / {sub.plan_details?.billing_period}</span>
+                    </p>
+                  </div>
+
+                  <div className="bg-[#FAF9FB] p-3 rounded-xl border border-[#E8E6EB] space-y-1 text-xs">
+                    <div className="flex justify-between text-[#6E6B75]">
+                      <span>Next Billing Date:</span>
+                      <span className="font-medium text-[#25232A]">{sub.next_billing_date || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between text-[#6E6B75]">
+                      <span>Expiry Date:</span>
+                      <span className="font-medium text-[#25232A]">{sub.expiry_date || 'Ongoing'}</span>
+                    </div>
+                    <div className="flex justify-between text-[#6E6B75]">
+                      <span>Included Lines:</span>
+                      <span className="font-medium text-[#25232A]">{sub.lines.length} service(s)</span>
+                    </div>
+                  </div>
+
+                  {/* Self service controls (PORT-3) */}
+                  {sub.status === 'Active' && (
+                    <div className="pt-2 border-t border-[#E8E6EB] flex items-center justify-between gap-2">
+                      {sub.plan_details?.pausable && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={sub.is_paused ? Play : Pause}
+                          onClick={() => togglePauseSubscription(sub.id)}
+                        >
+                          {sub.is_paused ? 'Resume' : 'Pause'}
+                        </Button>
+                      )}
+                      {sub.plan_details?.renewable && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={RefreshCw}
+                          onClick={() => renewSubscription(sub.id)}
+                        >
+                          Renew
+                        </Button>
+                      )}
+                      {sub.plan_details?.closable && (
+                        <Button
+                          variant="outlined"
+                          size="sm"
+                          icon={XCircle}
+                          className="text-[#DC2626] border-[#FECACA] hover:bg-[#FEE2E2]"
+                          onClick={() => closeSubscription(sub.id, 'Cancelled by customer via self-service portal')}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
