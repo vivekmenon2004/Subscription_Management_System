@@ -453,7 +453,7 @@ export function DataProvider({ children }) {
 
   // Switch role helper
   const switchRole = (role) => {
-    if (!isDemo) return;
+    setIsDemo(true);
     setActiveRole(role);
     setCurrentUser(PRESET_USERS[role] || PRESET_USERS.admin);
   };

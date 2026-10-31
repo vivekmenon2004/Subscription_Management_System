@@ -60,11 +60,11 @@ export function Navbar({ setActiveTab, onLogout }) {
           {/* User profile avatar */}
           <div className="flex items-center gap-2 pl-2 border-l border-[#E8E6EB]">
             <div className="w-8 h-8 rounded-full bg-[#EAE8ED] flex items-center justify-center text-[#714B67] font-semibold text-xs border border-[#DDD9E2]">
-              {currentUser.name.charAt(0)}
+              {(currentUser?.name || 'Customer').charAt(0)}
             </div>
             <div className="hidden sm:block text-left">
-              <p className="text-xs font-medium text-[#25232A] leading-none">{currentUser.name}</p>
-              <p className="text-[10px] text-[#6E6B75] capitalize mt-0.5">{activeRole}</p>
+              <p className="text-xs font-medium text-[#25232A] leading-none">{currentUser?.name || 'Customer'}</p>
+              <p className="text-[10px] text-[#6E6B75] capitalize mt-0.5">{activeRole || currentUser?.role || 'Customer'}</p>
             </div>
           </div>
 

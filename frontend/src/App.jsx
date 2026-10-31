@@ -24,7 +24,7 @@ function MainApp() {
   const navigate = useNavigate();
   const { currentUser, signOut } = useData();
   const [activeTab, setActiveTab] = useState(() => (
-    currentUser.role === 'customer' ? 'portal' : 'dashboard'
+    currentUser?.role === 'customer' ? 'portal' : 'dashboard'
   ));
   const [activeInvoice, setActiveInvoice] = useState(null);
   const [paymentInvoice, setPaymentInvoice] = useState(null);
