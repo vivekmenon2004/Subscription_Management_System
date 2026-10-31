@@ -3,7 +3,8 @@ from .views import (
     PortalSubscriptionListView,
     PortalSubscriptionActionView,
     PortalInvoiceListView,
-    PortalPaymentListView
+    PortalPaymentListView,
+    PortalProfileView
 )
 
 urlpatterns = [
@@ -11,4 +12,5 @@ urlpatterns = [
     path('portal/subscriptions/<int:pk>/<str:action_type>', PortalSubscriptionActionView.as_view(), name='portal_subscription_action'),
     path('portal/invoices', PortalInvoiceListView.as_view(), name='portal_invoices'),
     path('portal/payments', PortalPaymentListView.as_view(), name='portal_payments'),
+    path('portal/profile', PortalProfileView.as_view(), name='portal_profile'),
 ]

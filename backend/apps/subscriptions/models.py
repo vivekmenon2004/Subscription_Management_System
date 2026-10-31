@@ -1,7 +1,7 @@
 from decimal import Decimal
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
-from apps.accounts.models import User
 from apps.plans.models import Plan
 from apps.catalog.models import Product, ProductVariant
 
@@ -21,7 +21,7 @@ class Subscription(models.Model):
         CUSTOM = 'custom', 'Custom'
 
     number = models.CharField(max_length=50, unique=True, db_index=True)
-    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
+    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='subscriptions')
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name='subscriptions')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT, db_index=True)
     
@@ -73,7 +73,7 @@ class SubscriptionLine(models.Model):
         return f"{self.subscription.number} - {self.product.name} x {self.quantity}"
 
 class AuditLog(models.Model):
-    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     entity_type = models.CharField(max_length=50, db_index=True)  # Subscription, Invoice, Payment
     entity_id = models.CharField(max_length=50, db_index=True)
     action = models.CharField(max_length=100)

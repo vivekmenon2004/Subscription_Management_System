@@ -1,8 +1,8 @@
 from decimal import Decimal
+from django.conf import settings
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
-from apps.accounts.models import User
 from apps.catalog.models import Product
 from apps.subscriptions.models import Subscription
 
@@ -73,7 +73,7 @@ class Invoice(models.Model):
 
     number = models.CharField(max_length=50, unique=True, db_index=True)
     subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name='invoices')
-    customer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='invoices')
+    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='invoices')
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT, db_index=True)
     
     period_start = models.DateField()

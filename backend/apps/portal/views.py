@@ -74,10 +74,22 @@ class PortalInvoiceListView(generics.ListAPIView):
         # Filtered by customer
         return Invoice.objects.filter(customer=self.request.user).order_by('-issue_date')
 
-class PortalPaymentListView(generics.ListAPIView):
+class PortalPaymentListView(generics.ListCreateAPIView):
     serializer_class = PaymentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         # Scoped payments on customer invoices
         return Payment.objects.filter(invoice__customer=self.request.user, is_void=False).order_by('-payment_date')
+
+    def perform_create(self, serializer):
+        invoice = serializer.validated_data.get('invoice')
+        if invoice and invoice.customer != self.request.user and not (self.request.user.role in ['admin', 'staff'] or self.request.user.is_superuser):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You can only make payments on your own invoices.")
+        serializer.save()
+
+from apps.accounts.views import MeView
+class PortalProfileView(MeView):
+    permission_classes = [permissions.IsAuthenticated]
+

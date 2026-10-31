@@ -1,7 +1,7 @@
 from decimal import Decimal
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
-from apps.accounts.models import User
 from apps.billing.models import Invoice
 
 class Payment(models.Model):
@@ -18,7 +18,7 @@ class Payment(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     payment_date = models.DateField(default=timezone.now)
     note = models.TextField(blank=True)
-    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     is_void = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
