@@ -23,6 +23,14 @@ describe('Brightloop landing page', () => {
     expect(screen.getByRole('heading', { name: /Know where your\s*revenue stands/ })).toBeInTheDocument();
   });
 
+  it('labels dashboard previews and omits fabricated customer metrics', () => {
+    renderLandingPage();
+
+    expect(screen.getByText('ILLUSTRATIVE FINANCE PREVIEW')).toBeInTheDocument();
+    expect(screen.getByText('Overdue invoices surface here for timely follow-up.')).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/LIVE BILLING PREVIEW|1,284|14\.8L|Northstar Labs|Acme Systems|12\.8%|120ms|All systems operational/);
+  });
+
   it('updates plan prices when switching to annual billing', () => {
     renderLandingPage();
 

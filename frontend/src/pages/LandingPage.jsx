@@ -10,12 +10,10 @@ import {
   CalendarDays,
   Check,
   CheckCircle2,
-  ChevronRight,
   CircleDollarSign,
   Clock3,
   Code2,
   CreditCard,
-  Download,
   FileCheck2,
   FileText,
   Gauge,
@@ -375,13 +373,12 @@ function InvoiceFloat() {
 function FinanceFloat() {
   return (
     <div className="float-card finance-float">
-      <div className="finance-float__header"><span className="finance-float__pulse" /> FINANCE PULSE <span className="finance-float__menu">···</span></div>
-      <span className="finance-float__label">MONTHLY RECURRING REVENUE</span>
-      <strong className="finance-float__mrr">₹14,80,000</strong>
-      <div className="finance-float__delta"><ArrowUpRight size={13} /> 12.8% <span>vs last month</span></div>
+      <div className="finance-float__header"><span className="finance-float__pulse" /> FINANCE PULSE</div>
+      <span className="finance-float__label">BILLING OPERATIONS</span>
+      <strong className="finance-float__mrr">In sync</strong>
       <div className="finance-float__stats">
-        <div><span>Duplicate invoices prevented</span><strong>100<small>% · DB unique key</small></strong></div>
-        <div><span>P95 API latency</span><strong>120<small>ms</small></strong></div>
+        <div><span>Invoice creation</span><strong>Idempotent</strong></div>
+        <div><span>Activity history</span><strong>Auditable</strong></div>
       </div>
     </div>
   );
@@ -396,23 +393,23 @@ function Hero() {
           <h1>Recurring revenue,<br />without the <span>busywork.</span></h1>
           <p className="landing-hero__lead">Run plans, automated billing, and renewals without spreadsheets. One calm, connected platform for your entire subscription lifecycle.</p>
           <div className="hero-actions">
-                <a className="button button--primary" href="#finance">Launch live demo <ArrowRight size={16} /></a>
-                <a className="button button--quiet" href="#billing-engine"><span className="button__play"><Play size={11} fill="currentColor" /></span> See 2-min billing run</a>
+            <a className="button button--primary" href="#capabilities">Explore the platform <ArrowRight size={16} /></a>
+            <a className="button button--quiet" href="#billing-engine"><span className="button__play"><Play size={11} fill="currentColor" /></span> Explore billing automation</a>
           </div>
           <div className="hero-proof">
-            <div className="avatar-stack" aria-hidden="true"><span>R</span><span>A</span><span>M</span><span>+</span></div>
-            <div><div className="hero-stars">★★★★★</div><span>Designed for finance and operations teams</span></div>
+            <CheckCircle2 size={15} aria-hidden="true" />
+            <span>Designed for finance and operations teams</span>
           </div>
-          <div className="hero-trust"><span><CheckCircle2 size={14} /> Built on Django 5</span><i /> <span>India-first billing</span><i /> <span>100% activity audit</span></div>
+          <div className="hero-trust"><span><CheckCircle2 size={14} /> Built on Django 5</span><i /> <span>India-first billing</span><i /> <span>Auditable activity</span></div>
         </div>
         <div className="landing-hero__visual">
           <div className="hero-orbit-glow" />
           <ThreeScene />
-          <div className="hero-visual-label"><span className="hero-visual-label__dot" /> LIVE BILLING PREVIEW</div>
+          <div className="hero-visual-label"><span className="hero-visual-label__dot" /> ILLUSTRATIVE PRODUCT PREVIEW</div>
           <SubscriptionPreview />
           <InvoiceFloat />
           <FinanceFloat />
-          <div className="hero-floating-tag"><span><Check size={12} /></span> Next invoice in 2 days</div>
+          <div className="hero-floating-tag"><span><Check size={12} /></span> Billing status at a glance</div>
         </div>
       </div>
       <a className="hero-scroll" href="#shift" aria-label="Scroll to learn more"><span>SCROLL TO EXPLORE</span><ArrowDown size={14} /></a>
@@ -518,20 +515,20 @@ function RoleAccess() {
         <div className="role-visual">
           <div className="role-visual__glow" />
           <div className="workspace-window">
-            <div className="workspace-window__bar"><Logo /><span><i /> WORKSPACE SECURE</span></div>
+            <div className="workspace-window__bar"><Logo /><span><i /> ILLUSTRATIVE WORKSPACE</span></div>
             <div className="workspace-window__body">
-              <div className="workspace-greeting"><span className="eyebrow-label">{activeRole.toUpperCase()} WORKSPACE</span><strong>Good morning, Alex <Sparkles size={14} /></strong></div>
+              <div className="workspace-greeting"><span className="eyebrow-label">{activeRole.toUpperCase()} WORKSPACE</span><strong>Subscription overview <Sparkles size={14} /></strong></div>
               <div className="workspace-kpis">
-                <div><span>Active plans</span><strong>248</strong><small>↑ 12 this month</small></div>
-                <div><span>Monthly revenue</span><strong>₹14.8L</strong><small>↑ 8.4% this month</small></div>
+                <div><span>Active plans</span><strong>Tracked</strong><small>Subscription status</small></div>
+                <div><span>Monthly revenue</span><strong>Organized</strong><small>Recurring billing</small></div>
               </div>
               <div className="workspace-chart">
-                <div className="workspace-chart__top"><span>Revenue trend</span><span>Last 6 months⌄</span></div>
-                <div className="chart-bars" aria-label="Revenue trend over six months">{[36, 48, 42, 64, 59, 82, 72, 96, 78, 100, 88, 114, 94, 126, 112, 145, 128, 158, 141, 172, 151, 185].map((height, index) => <i key={index} style={{ height: `${height}px`, animationDelay: `${index * 24}ms` }} />)}</div>
-                <div className="chart-months"><span>JUN</span><span>JUL</span><span>AUG</span><span>SEP</span><span>OCT</span><span>NOV</span></div>
+                <div className="workspace-chart__top"><span>Recurring revenue</span><span>Illustrative trend</span></div>
+                <div className="chart-bars" aria-hidden="true">{[36, 48, 42, 64, 59, 82, 72, 96, 78, 100, 88, 114, 94, 126, 112, 145, 128, 158, 141, 172, 151, 185].map((height, index) => <i key={index} style={{ height: `${height}px`, animationDelay: `${index * 24}ms` }} />)}</div>
+                <div className="chart-months"><span>PERIOD START</span><span>PERIOD END</span></div>
               </div>
-              <div className="workspace-activity"><span><span className="activity-icon"><FileText size={13} /></span> Invoice <strong>INV-2026-000412</strong><i className="activity-paid">PAID</i></span><span>2 min ago</span></div>
-              <div className="workspace-activity"><span><span className="activity-icon activity-icon--rose"><RefreshCw size={13} /></span> Renewal <strong>Acme Cloud</strong><i className="activity-renewed">RENEWED</i></span><span>18 min ago</span></div>
+              <div className="workspace-activity"><span><span className="activity-icon"><FileText size={13} /></span> Invoice <strong>Status tracking</strong><i className="activity-paid">PAID</i></span><span>Invoice history</span></div>
+              <div className="workspace-activity"><span><span className="activity-icon activity-icon--rose"><RefreshCw size={13} /></span> Renewal <strong>Subscription cycle</strong><i className="activity-renewed">TRACKED</i></span><span>Billing history</span></div>
             </div>
           </div>
           <div className="role-visual__note"><span><LockKeyhole size={13} /></span> Scoped access, down to every record</div>
@@ -573,7 +570,7 @@ function Pricing() {
             </article>
           ))}
         </div>
-        <p className="pricing-footnote"><ShieldCheck size={14} /> No credit card needed to explore. Talk to us about a plan that fits.</p>
+        <p className="pricing-footnote"><ShieldCheck size={14} /> Need a plan tailored to your operation? Talk to our team.</p>
       </div>
     </section>
   );
@@ -588,41 +585,37 @@ function FinanceDashboard() {
           <ul className="finance-points">
             <li><span><BarChart3 size={15} /></span><div><strong>Five essential KPIs, at a glance.</strong><small>Active plans, MRR, collections, outstanding, overdue.</small></div></li>
             <li><span><Gauge size={15} /></span><div><strong>Find overdue accounts early.</strong><small>Know who needs a nudge and how long they’ve been waiting.</small></div></li>
-            <li><span><Download size={15} /></span><div><strong>Close the books with confidence.</strong><small>Export a clean summary or print a finance report.</small></div></li>
+            <li><span><FileText size={15} /></span><div><strong>Keep billing activity in view.</strong><small>Review collections, balances, and overdue follow-ups.</small></div></li>
           </ul>
           <Link className="text-link" to="/register">See your finance dashboard <ArrowRight size={15} /></Link>
         </div>
         <div className="finance-dashboard">
-          <div className="finance-dashboard__header"><div><span className="eyebrow-label">FINANCE OVERVIEW</span><strong>Revenue at a glance</strong></div><button type="button">This month⌄</button></div>
+          <div className="finance-dashboard__header"><div><span className="eyebrow-label">ILLUSTRATIVE FINANCE PREVIEW</span><strong>Revenue at a glance</strong></div></div>
           <div className="dashboard-kpi-grid">
-            <div className="dashboard-kpi"><span>Active subscriptions</span><strong>1,284</strong><small className="kpi-up">↑ 8.2%</small></div>
-            <div className="dashboard-kpi"><span>Monthly recurring revenue</span><strong>₹14.8L</strong><small className="kpi-up">↑ 12.4%</small></div>
-            <div className="dashboard-kpi"><span>Period collections</span><strong>₹12.2L</strong><small>of ₹14.8L due</small></div>
-            <div className="dashboard-kpi"><span>Outstanding balance</span><strong>₹2.6L</strong><small>Across 18 invoices</small></div>
+            <div className="dashboard-kpi"><span>Active subscriptions</span><strong>By status</strong><small>Subscription overview</small></div>
+            <div className="dashboard-kpi"><span>Monthly recurring revenue</span><strong>Recurring</strong><small>Revenue tracking</small></div>
+            <div className="dashboard-kpi"><span>Period collections</span><strong>Payments</strong><small>Collection tracking</small></div>
+            <div className="dashboard-kpi"><span>Outstanding balance</span><strong>Follow-up</strong><small>Balance tracking</small></div>
           </div>
           <div className="dashboard-revenue">
-            <div className="dashboard-revenue__head"><span>Collections over time</span><span className="legend-dot" /> Collected</div>
+            <div className="dashboard-revenue__head"><span>Collections over time</span><span>Illustrative trend</span></div>
             <div className="revenue-chart">
-              <div className="revenue-chart__scale"><span>₹15L</span><span>₹10L</span><span>₹5L</span><span>₹0</span></div>
               <div className="revenue-chart__plot">
                 <div className="revenue-chart__grid"><i /><i /><i /><i /></div>
-                <svg viewBox="0 0 540 150" preserveAspectRatio="none" role="img" aria-label="Collections increase over six months">
+                <svg viewBox="0 0 540 150" preserveAspectRatio="none" aria-hidden="true">
                   <defs><linearGradient id="revenueFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#A64D87" stopOpacity=".24" /><stop offset="100%" stopColor="#A64D87" stopOpacity="0" /></linearGradient></defs>
                   <path d="M0,120 C35,112 45,98 85,103 S140,77 175,87 S230,66 260,73 S315,45 350,62 S410,24 438,43 S490,16 540,22 L540,150 L0,150 Z" fill="url(#revenueFill)" />
                   <path d="M0,120 C35,112 45,98 85,103 S140,77 175,87 S230,66 260,73 S315,45 350,62 S410,24 438,43 S490,16 540,22" fill="none" stroke="#8C4F79" strokeWidth="3" vectorEffect="non-scaling-stroke" />
                   <circle cx="540" cy="22" r="5" fill="#714B67" stroke="#fff" strokeWidth="3" vectorEffect="non-scaling-stroke" />
                 </svg>
-                <div className="revenue-chart__months"><span>JUN</span><span>JUL</span><span>AUG</span><span>SEP</span><span>OCT</span><span>NOV</span></div>
+                <div className="revenue-chart__months"><span>EARLIER</span><span>LATER</span></div>
               </div>
             </div>
           </div>
           <div className="overdue-table">
-            <div className="overdue-table__head"><strong>Overdue invoice radar <span className="overdue-count">3</span></strong><a href="#pricing">View all <ChevronRight size={13} /></a></div>
-            <div className="overdue-row overdue-row--labels"><span>ACCOUNT</span><span>INVOICE</span><span>AMOUNT</span><span>OVERDUE</span></div>
-            <div className="overdue-row"><span><i className="company-dot company-dot--rose" /> Northstar Labs</span><span>INV-000392</span><strong>₹48,000</strong><span className="overdue-pill">12 days</span></div>
-            <div className="overdue-row"><span><i className="company-dot company-dot--blue" /> Acme Systems</span><span>INV-000388</span><strong>₹22,500</strong><span className="overdue-pill">6 days</span></div>
+            <div className="overdue-table__head"><strong>Overdue invoice follow-up</strong></div>
+            <p className="overdue-empty-state">Overdue invoices surface here for timely follow-up.</p>
           </div>
-          <div className="dashboard-actions"><button type="button"><Download size={13} /> Export month-end CSV</button><button type="button"><FileText size={13} /> Print report</button></div>
         </div>
       </div>
     </section>
@@ -639,7 +632,7 @@ function Footer() {
           <div className="footer-cta__actions"><Link className="button button--white" to="/register">Start your free trial <ArrowRight size={15} /></Link><a className="footer-doc-link" href="#technical-stack">Technical documentation <ArrowUpRight size={14} /></a></div>
         </div>
         <div className="footer-main">
-          <div className="footer-brand"><Logo /><p>A steadier rhythm for every recurring rupee.</p><span className="footer-status"><i /> All systems operational</span></div>
+          <div className="footer-brand"><Logo /><p>A steadier rhythm for every recurring rupee.</p></div>
           <div className="footer-column"><strong>PRODUCT</strong><a href="#catalog">Product catalog</a><a href="#capabilities">Subscriptions</a><a href="#billing-engine">Billing engine</a><a href="#finance">Finance dashboard</a><a href="#tax-guardrails">Tax & discounts</a></div>
           <div className="footer-column" id="technical-stack"><strong>BUILT WITH</strong><span>Python 3.12 · Django 5</span><span>PostgreSQL · Redis</span><span>React 18 · Three.js</span><span>Celery task processing</span></div>
           <div className="footer-column"><strong>TRUST & SECURITY</strong><span>Argon2 password hashing</span><span>Role-scoped access</span><span>Auditable activity</span><span>Idempotent billing</span></div>
