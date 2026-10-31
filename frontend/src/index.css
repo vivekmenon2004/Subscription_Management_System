@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #714B67;
+  --color-primary-hover: #5F3B56;
+  --color-primary-light: #F5EEF3;
+  --color-secondary: #A64D87;
+  --color-tertiary: #25232A;
+  --color-neutral: #F7F6F8;
+  --color-card: #FFFFFF;
+  --color-border: #E8E6EB;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-neutral);
+  color: #1E1D22;
+}
+
+/* Tabular numbers for financial and tabular data */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D5D2DA;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B8B4C0;
+}

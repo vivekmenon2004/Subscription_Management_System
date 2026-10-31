@@ -1,0 +1,55 @@
+import React from 'react';
+import { Home, Repeat, FileText, CreditCard, Package, Tags, BarChart3, User, FileSignature } from 'lucide-react';
+import { useData } from '../context/DataContext';
+
+export function PillNav({ activeTab, setActiveTab }) {
+  const { activeRole } = useData();
+
+  const adminStaffTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'subscriptions', label: 'Subscriptions', icon: Repeat },
+    { id: 'invoices', label: 'Invoices', icon: FileText },
+    { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'catalog', label: 'Catalog & Plans', icon: Package },
+    { id: 'quotations', label: 'Quotations', icon: FileSignature },
+    { id: 'taxes_discounts', label: 'Taxes & Discounts', icon: Tags },
+    { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'portal', label: 'Customer Portal', icon: User },
+  ];
+
+  const customerTabs = [
+    { id: 'portal', label: 'My Portal', icon: User },
+    { id: 'dashboard', label: 'Finance View', icon: Home },
+  ];
+
+  const tabs = activeRole === 'customer' ? customerTabs : adminStaffTabs;
+
+  return (
+    <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+      <nav
+        aria-label="Primary Navigation"
+        className="flex items-center gap-1.5 p-1.5 bg-white/95 backdrop-blur-md rounded-full border border-[#DDD9E2] shadow-pill"
+      >
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              aria-label={tab.label}
+              title={tab.label}
+              className={`relative flex items-center justify-center transition-all duration-200 rounded-full ${
+                isActive
+                  ? 'w-10 h-10 bg-[#714B67] text-white shadow-sm scale-105'
+                  : 'w-9 h-9 text-[#6E6B75] hover:text-[#25232A] hover:bg-[#F3F2F5]'
+              }`}
+            >
+              <Icon className="w-4 h-4" aria-hidden="true" />
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
