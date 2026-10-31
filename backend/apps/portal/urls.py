@@ -3,7 +3,8 @@ from .views import (
     PortalSubscriptionListView,
     PortalSubscriptionActionView,
     PortalInvoiceListView,
-    PortalPaymentListView
+    PortalPaymentListView,
+    PortalProfileView
 )
 
 from apps.catalog.views import PortalSubscribedProductsView
@@ -14,4 +15,5 @@ urlpatterns = [
     path('portal/invoices', PortalInvoiceListView.as_view(), name='portal_invoices'),
     path('portal/payments', PortalPaymentListView.as_view(), name='portal_payments'),
     path('portal/subscribed-products', PortalSubscribedProductsView.as_view(), name='portal_subscribed_products'),
+    path('portal/profile', PortalProfileView.as_view(), name='portal_profile'),
 ]

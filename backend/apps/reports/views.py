@@ -1,5 +1,6 @@
 from decimal import Decimal
-from django.db.models import Sum, Count, Q
+from django.db import models
+from django.db.models import Sum, Count, Q, F
 from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -47,11 +48,6 @@ class ReportsSummaryView(APIView):
         total_outstanding = max(Decimal('0.00'), total_invoiced - total_paid_on_confirmed)
 
         # Overdue invoices
-        overdue_qs = Invoice.objects.filter(
-            status=Invoice.Status.CONFIRMED,
-            due_date__lt=today
-        ).exclude(amount_paid__gte=models.F('total') if hasattr(models, 'F') else None)
-
         overdue_invoices = [inv for inv in confirmed_invoices if inv.is_overdue]
         overdue_count = len(overdue_invoices)
         overdue_amount = sum(inv.outstanding_balance for inv in overdue_invoices)
