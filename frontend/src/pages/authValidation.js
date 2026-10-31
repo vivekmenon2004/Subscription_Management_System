@@ -17,7 +17,8 @@ export const passwordSchema = z.string().superRefine((value, context) => {
 
 export const loginSchema = z.object({
   email: z.string().trim().email('Enter a valid work email address.'),
-  password: z.string().min(1, 'Enter your password.')
+  password: z.string().min(1, 'Enter your password.'),
+  rememberMe: z.boolean().optional().default(false)
 });
 
 export const registerSchema = z.object({

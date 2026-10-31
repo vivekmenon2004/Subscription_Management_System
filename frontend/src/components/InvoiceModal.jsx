@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Printer, Send, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, Printer, CheckCircle } from 'lucide-react';
 import { Button } from './Button';
 import { StatusBadge } from './StatusBadge';
 import { useData } from '../context/DataContext';

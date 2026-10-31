@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DataProvider } from './context/DataContext';
+import { DataProvider, useData } from './context/DataContext';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { PillNav } from './components/PillNav';
@@ -20,7 +20,10 @@ import { CustomerPortalPage } from './pages/CustomerPortalPage';
 
 function MainApp() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { currentUser, signOut } = useData();
+  const [activeTab, setActiveTab] = useState(() => (
+    currentUser.role === 'customer' ? 'portal' : 'dashboard'
+  ));
   const [activeInvoice, setActiveInvoice] = useState(null);
   const [paymentInvoice, setPaymentInvoice] = useState(null);
   const [showNewSubModal, setShowNewSubModal] = useState(false);
@@ -35,13 +38,18 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-[#F7F6F8] flex flex-col font-sans">
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => navigate('/login')} />
+      <Navbar
+        setActiveTab={setActiveTab}
+        onLogout={async () => {
+          await signOut();
+          navigate('/login', { replace: true });
+        }}
+      />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6">
         {activeTab === 'dashboard' && (
           <DashboardPage
             setActiveTab={setActiveTab}
-            onOpenInvoice={handleOpenInvoice}
             onRecordPayment={handleRecordPayment}
             onOpenNewSub={() => setShowNewSubModal(true)}
           />
@@ -117,6 +125,15 @@ function MainApp() {
   );
 }
 
+function AuthenticatedApp() {
+  const { authReady, isAuthenticated, isDemo } = useData();
+  if (!authReady) {
+    return <main className="p-8 text-center" role="status">Restoring your session…</main>;
+  }
+  if (!isAuthenticated && !isDemo) return <Navigate to="/login" replace />;
+  return <MainApp />;
+}
+
 export default function App() {
   return (
     <DataProvider>
@@ -125,7 +142,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/register" element={<AuthPage mode="register" />} />
-          <Route path="/app" element={<MainApp />} />
+          <Route path="/app" element={<AuthenticatedApp />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Package, Layers, AlertTriangle, Check, SlidersHorizontal, Globe, Monitor, Download, Laptop, ShieldCheck } from 'lucide-react';
+import { Plus, Package, AlertTriangle, Check, SlidersHorizontal, Globe, Monitor } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
 

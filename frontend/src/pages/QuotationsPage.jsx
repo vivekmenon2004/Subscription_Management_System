@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileSignature, Plus, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
 

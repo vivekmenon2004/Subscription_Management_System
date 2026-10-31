@@ -1,10 +1,10 @@
 import React from 'react';
-import { Download, BarChart2, TrendingUp, Calendar, CreditCard } from 'lucide-react';
+import { Download, Calendar, CreditCard } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
 
 export function ReportsPage() {
-  const { subscriptions, invoices, payments } = useData();
+  const { invoices } = useData();
 
   const handleExportCSV = () => {
     const headers = ["Invoice Number", "Customer", "Issue Date", "Due Date", "Status", "Subtotal", "Tax", "Total", "Paid", "Balance"];

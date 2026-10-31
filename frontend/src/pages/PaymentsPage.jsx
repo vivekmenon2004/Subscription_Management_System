@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, Ban, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Ban } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { SearchField } from '../components/SearchField';
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
-  User, CheckCircle, Pause, Play, RefreshCw, XCircle, 
-  FileText, Download, Lock, Building, Phone, Mail, Check, AlertCircle,
+  CheckCircle, Pause, Play, RefreshCw, XCircle,
+  FileText, Check,
   Globe, Monitor, ExternalLink, ShieldCheck, Key, Laptop, AlertOctagon,
   Copy, CheckCircle2, Clock, Sparkles, HelpCircle, Layers
 } from 'lucide-react';
@@ -14,7 +14,6 @@ export function CustomerPortalPage({ onOpenInvoice }) {
     currentUser, 
     subscriptions, 
     invoices, 
-    payments,
     products,
     togglePauseSubscription, 
     renewSubscription, 
@@ -26,8 +25,6 @@ export function CustomerPortalPage({ onOpenInvoice }) {
   // AUTH-6: Scoped to customer only
   const mySubscriptions = subscriptions.filter(s => s.customer === currentUser.id || currentUser.role !== 'customer');
   const myInvoices = invoices.filter(inv => inv.customer === currentUser.id || currentUser.role !== 'customer');
-  const myPayments = payments.filter(p => p.customer_name === currentUser.name || currentUser.role !== 'customer');
-
   const [activeTab, setActiveTab] = useState('products'); // 'products' | 'subs' | 'invoices' | 'profile'
 
   // Launch state & feedback

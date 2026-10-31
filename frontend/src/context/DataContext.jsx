@@ -1,5 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiRequest } from '../services/api';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import {
+  apiRequest,
+  clearAuthTokens,
+  getAccessToken,
+  getRefreshToken,
+  saveAuthTokens
+} from '../services/api';
 
 const DataContext = createContext(null);
 
@@ -322,8 +328,11 @@ const INITIAL_PAYMENTS = [
 ];
 
 export function DataProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(PRESET_USERS.admin);
-  const [activeRole, setActiveRole] = useState('admin'); // 'admin' | 'staff' | 'customer'
+  const [currentUser, setCurrentUser] = useState(null);
+  const [activeRole, setActiveRole] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
+  const [authReady, setAuthReady] = useState(() => !getAccessToken());
 
   const [subscriptions, setSubscriptions] = useState(INITIAL_SUBSCRIPTIONS);
   const [invoices, setInvoices] = useState(INITIAL_INVOICES);
@@ -331,13 +340,94 @@ export function DataProvider({ children }) {
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
   const [plans, setPlans] = useState(INITIAL_PLANS);
   const [templates, setTemplates] = useState(INITIAL_TEMPLATES);
-  const [taxes, setTaxes] = useState(INITIAL_TAXES);
-  const [discounts, setDiscounts] = useState(INITIAL_DISCOUNTS);
+  const taxes = INITIAL_TAXES;
+  const discounts = INITIAL_DISCOUNTS;
+
+  useEffect(() => {
+    if (!getAccessToken()) return undefined;
+    let active = true;
+    apiRequest('/auth/me')
+      .then(user => {
+        if (!active) return;
+        setCurrentUser(user);
+        setActiveRole(user.role);
+        setIsAuthenticated(true);
+      })
+      .catch(() => clearAuthTokens())
+      .finally(() => {
+        if (active) setAuthReady(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const acceptAuthentication = (response, rememberMe) => {
+    if (!response.access || !response.refresh || !response.user) {
+      throw new Error('The authentication server returned an incomplete session.');
+    }
+    saveAuthTokens(response, rememberMe);
+    setCurrentUser(response.user);
+    setActiveRole(response.user.role);
+    setIsAuthenticated(true);
+    setIsDemo(false);
+    setAuthReady(true);
+  };
+
+  const login = async ({ email, password, rememberMe = false }) => {
+    const response = await apiRequest(
+      '/auth/login',
+      'POST',
+      { email, password },
+      { auth: false }
+    );
+    acceptAuthentication(response, rememberMe);
+    return response.user;
+  };
+
+  const registerAccount = async ({ email, password, name, companyName }) => {
+    const response = await apiRequest(
+      '/auth/register',
+      'POST',
+      { email, password, name, company_name: companyName || '' },
+      { auth: false }
+    );
+    acceptAuthentication(response, false);
+    return response.user;
+  };
+
+  const signOut = async () => {
+    const refresh = getRefreshToken();
+    try {
+      if (refresh) {
+        await apiRequest('/auth/logout', 'POST', { refresh });
+      }
+    } catch (error) {
+      console.warn('[Auth] Server logout failed; clearing the local session:', error.message);
+    } finally {
+      clearAuthTokens();
+      setCurrentUser(null);
+      setActiveRole(null);
+      setIsAuthenticated(false);
+      setIsDemo(false);
+      setAuthReady(true);
+    }
+  };
 
   // Switch role helper
   const switchRole = (role) => {
+    if (!isDemo) return;
     setActiveRole(role);
     setCurrentUser(PRESET_USERS[role] || PRESET_USERS.admin);
+  };
+
+  const startDemo = role => {
+    clearAuthTokens();
+    setActiveRole(role);
+    setCurrentUser(PRESET_USERS[role] || PRESET_USERS.admin);
+    setIsAuthenticated(false);
+    setIsDemo(true);
+    setAuthReady(true);
   };
 
   // Subscription Actions
@@ -417,7 +507,7 @@ export function DataProvider({ children }) {
         const invNumber = `INV-2026-${String(invId).padStart(6, '0')}`;
         const subtotal = sub.total_recurring_amount;
         const taxRate = 18;
-        const taxAmount = (Number(subtotal) * 0.18).toFixed(2);
+        const taxAmount = (Number(subtotal) * taxRate / 100).toFixed(2);
         const total = (Number(subtotal) + Number(taxAmount)).toFixed(2);
 
         const newInv = {
@@ -449,8 +539,8 @@ export function DataProvider({ children }) {
             unit_price: l.unit_price,
             discount: '0.00',
             tax_rate: '18.00',
-            tax_amount: (Number(l.amount) * 0.18).toFixed(2),
-            amount: (Number(l.amount) * 1.18).toFixed(2)
+            tax_amount: (Number(l.amount) * taxRate / 100).toFixed(2),
+            amount: (Number(l.amount) * (1 + taxRate / 100)).toFixed(2)
           }))
         };
         generated.push(newInv);
@@ -592,7 +682,7 @@ export function DataProvider({ children }) {
       const res = await apiRequest(`/products/${productId}/launch/web`, 'POST', { subscription_id: subscriptionId });
       return res;
     } catch (err) {
-      // Local fallback for offline mode
+      if (!(err instanceof TypeError)) throw err;
       const prod = products.find(p => p.id === productId);
       const sub = subscriptions.find(s => s.id === subscriptionId) || subscriptions[0];
       if (sub && sub.status !== 'Active') {
@@ -621,7 +711,7 @@ export function DataProvider({ children }) {
       });
       return res;
     } catch (err) {
-      // Local fallback for offline mode
+      if (!(err instanceof TypeError)) throw err;
       const prod = products.find(p => p.id === productId);
       const sub = subscriptions.find(s => s.id === subscriptionId) || subscriptions[0];
       if (sub && sub.status !== 'Active') {
@@ -671,6 +761,13 @@ export function DataProvider({ children }) {
     <DataContext.Provider value={{
       currentUser,
       activeRole,
+      authReady,
+      isAuthenticated,
+      isDemo,
+      login,
+      registerAccount,
+      signOut,
+      startDemo,
       switchRole,
       subscriptions,
       invoices,

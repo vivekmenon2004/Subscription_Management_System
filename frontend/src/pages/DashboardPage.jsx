@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  Users, DollarSign, AlertCircle, ArrowUpRight, Play, 
-  Repeat, FileText, CheckCircle2, Calendar, TrendingUp 
+  DollarSign, AlertCircle, ArrowUpRight, Play,
+  Repeat, FileText, CheckCircle2, TrendingUp
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
-import { StatusBadge } from '../components/StatusBadge';
 import { ProgressBar } from '../components/ProgressBar';
 
-export function DashboardPage({ setActiveTab, onOpenInvoice, onRecordPayment, onOpenNewSub }) {
+export function DashboardPage({ setActiveTab, onRecordPayment, onOpenNewSub }) {
   const { subscriptions, invoices, payments, runDailyBillingJob } = useData();
   const [jobNotice, setJobNotice] = useState('');
 
