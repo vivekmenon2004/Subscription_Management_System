@@ -179,12 +179,16 @@ export function CustomerPortalPage({ onOpenInvoice }) {
       
       // Dispatch protocol directly
       if (res.protocol_url) {
-        // Trigger protocol in hidden iframe / window
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = res.protocol_url;
-        document.body.appendChild(iframe);
-        setTimeout(() => document.body.removeChild(iframe), 3000);
+        try {
+          const link = document.createElement('a');
+          link.href = res.protocol_url;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => document.body.removeChild(link), 1000);
+        } catch (e) {
+          console.warn('[DesktopLaunch] Direct dispatch warning:', e);
+        }
       }
 
       // Show launch modal with ticket details & fallback options
@@ -429,8 +433,14 @@ export function CustomerPortalPage({ onOpenInvoice }) {
                           size="md"
                           icon={Globe}
                           className="w-full justify-center"
-                          disabled={!item.access_allowed || launchingProdId === item.product_id}
-                          onClick={() => handleOpenInWeb(item)}
+                          disabled={launchingProdId === item.product_id}
+                          onClick={() => {
+                            if (!item.access_allowed) {
+                              setLaunchError(`Web Access Restricted: ${item.access_reason}`);
+                              return;
+                            }
+                            handleOpenInWeb(item);
+                          }}
                         >
                           {launchingProdId === item.product_id ? 'Verifying...' : 'Open in Web'}
                         </Button>
@@ -441,8 +451,14 @@ export function CustomerPortalPage({ onOpenInvoice }) {
                           size="md"
                           icon={Monitor}
                           className="w-full justify-center"
-                          disabled={!item.access_allowed || launchingProdId === item.product_id}
-                          onClick={() => handleOpenInApp(item)}
+                          disabled={launchingProdId === item.product_id}
+                          onClick={() => {
+                            if (!item.access_allowed) {
+                              setLaunchError(`Desktop Access Restricted: ${item.access_reason}`);
+                              return;
+                            }
+                            handleOpenInApp(item);
+                          }}
                         >
                           {launchingProdId === item.product_id ? 'Generating...' : 'Open in App'}
                         </Button>

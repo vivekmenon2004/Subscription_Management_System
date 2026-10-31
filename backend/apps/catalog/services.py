@@ -161,10 +161,17 @@ def create_web_launch_session(user, product, subscription, ip_address=''):
         metadata={"session_id": str(session.session_id)}
     )
 
-    # Determine destination URL
-    base_url = product.web_url or f"http://127.0.0.1:8000/api/v1/demo-app/{product.id}"
-    separator = '&' if '?' in base_url else '?'
-    launch_url = f"{base_url}{separator}launch_token={token}&product_id={product.id}"
+    # Determine destination URL — default to the React demo product page
+    # Products can override with a custom web_url; if set, append token to it.
+    demo_base = f"http://localhost:5173/demo"
+    if product.web_url and not product.web_url.startswith("http://localhost:5173/app/"):
+        # External custom URL: append token to whatever URL is configured
+        base_url = product.web_url
+        separator = '&' if '?' in base_url else '?'
+        launch_url = f"{base_url}{separator}launch_token={token}&product_id={product.id}"
+    else:
+        # Default: redirect to Brightloop's own demo product website
+        launch_url = f"{demo_base}?launch_token={token}&product_id={product.id}&subscription_id={subscription.id}"
 
     return session, launch_url
 

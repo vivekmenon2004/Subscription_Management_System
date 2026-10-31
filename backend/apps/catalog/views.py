@@ -117,8 +117,11 @@ class ProductWebLaunchView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request, pk):
-        product = Product.objects.filter(id=pk).first()
+    def post(self, request, pk=None):
+        prod_id = pk or request.data.get('product_id') or request.query_params.get('product_id')
+        if not prod_id:
+            return Response({"error": "product_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        product = Product.objects.filter(id=prod_id).first()
         if not product:
             return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
 

@@ -21,7 +21,11 @@ urlpatterns = [
     # Customer Product Access & Launch Endpoints
     path('products/<int:pk>/access-details', ProductAccessDetailsView.as_view(), name='product_access_details'),
     path('products/<int:pk>/launch/web', ProductWebLaunchView.as_view(), name='product_launch_web'),
+    path('products/<int:pk>/launch/web/', ProductWebLaunchView.as_view()),
+    path('products/launch/web', ProductWebLaunchView.as_view(), name='product_launch_web_direct'),
+    path('products/launch/web/', ProductWebLaunchView.as_view()),
     path('products/<int:pk>/launch/desktop', ProductDesktopLaunchView.as_view(), name='product_launch_desktop'),
+    path('products/<int:pk>/launch/desktop/', ProductDesktopLaunchView.as_view()),
     
     # Desktop Authentication Exchange & Destination Verification
     path('products/access/exchange-code', DesktopCodeExchangeView.as_view(), name='product_access_exchange_code'),

@@ -18,6 +18,7 @@ import { TaxesDiscountsPage } from './pages/TaxesDiscountsPage';
 import { StaffManagementPage } from './pages/StaffManagementPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { CustomerPortalPage } from './pages/CustomerPortalPage';
+import { DemoProductPage } from './pages/DemoProductPage';
 
 function MainApp() {
   const navigate = useNavigate();
@@ -148,6 +149,7 @@ export default function App() {
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/register" element={<AuthPage mode="register" />} />
           <Route path="/app" element={<AuthenticatedApp />} />
+          <Route path="/demo" element={<DemoProductPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
