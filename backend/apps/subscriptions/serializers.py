@@ -10,7 +10,7 @@ from apps.accounts.serializers import UserSerializer
 from apps.catalog.models import Product, ProductVariant
 from apps.plans.models import Plan
 from apps.plans.serializers import PlanSerializer
-from .models import Subscription, SubscriptionLine, AuditLog
+from .models import Subscription, SubscriptionLine, AuditLog, PurchaseOrder
 
 class SubscriptionLineSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
@@ -138,3 +138,37 @@ class SubscriptionSerializer(serializers.ModelSerializer):
             before_after_json={"old_status": old_status, "new_status": instance.status}
         )
         return instance
+
+
+class PurchaseOrderSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_icon_url = serializers.CharField(source='product.icon_url', read_only=True)
+    product_type = serializers.CharField(source='product.type', read_only=True)
+    plan_name = serializers.CharField(source='plan.name', read_only=True)
+    plan_billing_period = serializers.CharField(source='plan.billing_period', read_only=True)
+    variant_name = serializers.CharField(source='variant.value', read_only=True)
+    customer_email = serializers.CharField(source='customer.email', read_only=True)
+    customer_name = serializers.CharField(source='customer.name', read_only=True)
+    discount_name = serializers.CharField(source='applied_discount.name', read_only=True)
+    tax_name = serializers.CharField(source='tax.name', read_only=True)
+    subscription_number = serializers.CharField(source='subscription.number', read_only=True)
+    invoice_number = serializers.CharField(source='invoice.number', read_only=True)
+
+    class Meta:
+        model = PurchaseOrder
+        fields = [
+            'id', 'order_number', 'customer', 'customer_name', 'customer_email',
+            'product', 'product_name', 'product_icon_url', 'product_type',
+            'variant', 'variant_name', 'plan', 'plan_name', 'plan_billing_period',
+            'quantity', 'unit_price', 'subtotal', 'discount_amount', 'discount_name',
+            'tax_amount', 'tax_name', 'total_amount', 'status',
+            'payment_method', 'payment_reference', 'idempotency_key',
+            'subscription', 'subscription_number', 'invoice', 'invoice_number',
+            'payment', 'notes', 'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'order_number', 'customer', 'customer_name', 'customer_email',
+            'unit_price', 'subtotal', 'discount_amount', 'tax_amount', 'total_amount',
+            'status', 'subscription', 'invoice', 'payment', 'created_at', 'updated_at'
+        ]
+

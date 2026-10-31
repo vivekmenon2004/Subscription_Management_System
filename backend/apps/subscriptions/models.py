@@ -88,3 +88,51 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.entity_type} {self.entity_id}: {self.action} by {self.actor}"
+
+
+class PurchaseOrder(models.Model):
+    class Status(models.TextChoices):
+        PENDING = 'Pending', 'Pending'
+        PROCESSING = 'Processing', 'Processing'
+        COMPLETED = 'Completed', 'Completed'
+        FAILED = 'Failed', 'Failed'
+        CANCELLED = 'Cancelled', 'Cancelled'
+
+    order_number = models.CharField(max_length=64, unique=True, db_index=True)
+    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='purchase_orders')
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name='purchase_orders')
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
+    plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name='purchase_orders')
+    
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    subtotal = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    discount_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal('0.00'))
+    
+    applied_discount = models.ForeignKey('billing.Discount', on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
+    tax = models.ForeignKey('billing.Tax', on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
+    
+    status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING, db_index=True)
+    payment_method = models.CharField(max_length=50, default='upi')
+    payment_reference = models.CharField(max_length=255, blank=True, default='')
+    idempotency_key = models.CharField(max_length=128, unique=True, db_index=True)
+    
+    subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
+    invoice = models.ForeignKey('billing.Invoice', on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
+    payment = models.ForeignKey('payments.Payment', on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
+    
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['customer', 'status']),
+            models.Index(fields=['idempotency_key']),
+        ]
+
+    def __str__(self):
+        return f"{self.order_number} - {self.customer.email} ({self.status}) ₹{self.total_amount}"
+

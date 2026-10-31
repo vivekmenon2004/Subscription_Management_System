@@ -268,3 +268,150 @@ class DemoProductWebsiteTests(APITestCase):
         self.assertEqual(demo_res.data['plan']['price'], '12000.00')
         self.assertEqual(demo_res.data['subscription']['number'], 'SUB-TEST-ENT-02')
         self.assertEqual(demo_res.data['entitlements']['tier'], 'Enterprise')
+
+
+class CustomerDiscoveryAndPurchaseTests(APITestCase):
+    def setUp(self):
+        self.today = timezone.now().date()
+        self.customer = User.objects.create_user(
+            email='customer@acmecorp.com',
+            name='Rahul Sharma',
+            password='Password123!',
+            role=User.Role.CUSTOMER
+        )
+
+        from apps.billing.models import Tax, Discount
+        self.tax = Tax.objects.create(name='GST 18%', rate=Decimal('18.00'), is_inclusive=False, is_active=True)
+
+        self.product = Product.objects.create(
+            name='Brightloop Cloud ERP',
+            type=Product.ProductType.SOFTWARE,
+            sales_price=Decimal('1000.00'),
+            cost_price=Decimal('400.00'),
+            default_tax=self.tax,
+            is_available=True,
+            is_access_enabled=True,
+            is_publicly_available=True,
+            web_url='http://localhost:5173/app/cloud-erp'
+        )
+
+        self.plan = Plan.objects.create(
+            product=self.product,
+            name='Standard Monthly Plan',
+            price=Decimal('4999.00'),
+            billing_period=Plan.BillingPeriod.MONTHLY,
+            min_quantity=1,
+            is_trending=True,
+            trending_display_order=1,
+            is_publicly_available=True,
+            is_active=True,
+            features=['Full ERP Invoicing', 'Ledger', '10 Team Members']
+        )
+
+        self.discount = Discount.objects.create(
+            name='Welcome 10%',
+            type=Discount.DiscountType.PERCENTAGE,
+            value=Decimal('10.00'),
+            min_purchase=Decimal('1000.00'),
+            scope=Discount.Scope.ALL,
+            is_active=True
+        )
+
+    def test_product_discovery_and_search(self):
+        self.client.force_authenticate(user=self.customer)
+        # 1. Discover all products
+        res = self.client.get('/api/v1/portal/products')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(res.data['count'], 1)
+        found = any(p['id'] == self.product.id for p in res.data['products'])
+        self.assertTrue(found)
+
+        # 2. Search filtering
+        res_search = self.client.get('/api/v1/portal/products?search=Cloud+ERP')
+        self.assertEqual(res_search.status_code, status.HTTP_200_OK)
+        self.assertTrue(any(p['name'] == 'Brightloop Cloud ERP' for p in res_search.data['products']))
+
+        # 3. Category filtering
+        res_cat = self.client.get('/api/v1/portal/products?type=Software')
+        self.assertEqual(res_cat.status_code, status.HTTP_200_OK)
+        self.assertTrue(all(p['type'] == 'Software' for p in res_cat.data['products']))
+
+    def test_trending_plans_carousel_retrieval_and_admin_control(self):
+        self.client.force_authenticate(user=self.customer)
+        res = self.client.get('/api/v1/portal/plans/trending')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(res.data['count'], 1)
+        trending_plan = res.data['trending_plans'][0]
+        self.assertEqual(trending_plan['id'], self.plan.id)
+        self.assertTrue(trending_plan['is_trending'])
+        self.assertEqual(trending_plan['product']['name'], 'Brightloop Cloud ERP')
+        self.assertEqual(trending_plan['price'], '4999.00')
+
+        # Admin disables trending
+        self.plan.is_trending = False
+        self.plan.save()
+        res_updated = self.client.get('/api/v1/portal/plans/trending')
+        self.assertEqual(res_updated.status_code, status.HTTP_200_OK)
+
+    def test_purchase_quote_server_side_calculation(self):
+        self.client.force_authenticate(user=self.customer)
+        payload = {
+            'product_id': self.product.id,
+            'plan_id': self.plan.id,
+            'quantity': 1
+        }
+        res = self.client.post('/api/v1/portal/purchase/quote', payload)
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        pricing = res.data['pricing']
+        self.assertEqual(pricing['unit_price'], '4999.00')
+        self.assertEqual(pricing['subtotal'], '4999.00')
+        # 10% discount on 4999 = 499.90 -> discounted subtotal = 4499.10
+        self.assertEqual(pricing['discount']['amount'], '499.90')
+        # Tax 18% on 4499.10 = 809.84 -> Total = 5308.94
+        self.assertEqual(pricing['tax']['amount'], '809.84')
+        self.assertEqual(pricing['total_amount'], '5308.94')
+
+    def test_purchase_initiate_verify_and_activation(self):
+        self.client.force_authenticate(user=self.customer)
+        # Step 1: Initiate
+        init_res = self.client.post('/api/v1/portal/purchase/initiate', {
+            'product_id': self.product.id,
+            'plan_id': self.plan.id,
+            'quantity': 1,
+            'payment_method': 'upi'
+        })
+        self.assertEqual(init_res.status_code, status.HTTP_201_CREATED)
+        order_id = init_res.data['order']['id']
+        idempotency_key = init_res.data['order']['idempotency_key']
+        self.assertEqual(init_res.data['order']['status'], 'Pending')
+
+        # Step 2: Verify & Activate
+        verify_res = self.client.post('/api/v1/portal/purchase/verify', {
+            'order_id': order_id,
+            'payment_method': 'upi',
+            'payment_reference': 'UPI-REF-998811'
+        })
+        self.assertEqual(verify_res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(verify_res.data['status'], 'success')
+        self.assertEqual(verify_res.data['order']['status'], 'Completed')
+        self.assertEqual(verify_res.data['subscription']['status'], 'Active')
+        self.assertEqual(verify_res.data['invoice']['status'], 'Paid')
+        self.assertEqual(verify_res.data['payment']['method'], 'upi')
+
+        # Verify database objects
+        sub_id = verify_res.data['subscription']['id']
+        sub = Subscription.objects.get(id=sub_id)
+        self.assertEqual(sub.customer, self.customer)
+        self.assertEqual(sub.plan, self.plan)
+        self.assertEqual(sub.status, Subscription.Status.ACTIVE)
+
+        # Step 3: Idempotency verification
+        duplicate_res = self.client.post('/api/v1/portal/purchase/verify', {
+            'order_id': order_id,
+            'payment_method': 'upi'
+        })
+        self.assertEqual(duplicate_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(duplicate_res.data['subscription']['id'], sub_id)
+        # Ensure no duplicate subscription was created
+        self.assertEqual(Subscription.objects.filter(customer=self.customer).count(), 1)
+

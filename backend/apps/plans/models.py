@@ -22,6 +22,14 @@ class Plan(models.Model):
     pausable = models.BooleanField(default=True)
     renewable = models.BooleanField(default=True)
     
+    # Discovery & Catalog Configuration
+    product = models.ForeignKey('catalog.Product', on_delete=models.CASCADE, null=True, blank=True, related_name='plans')
+    description = models.TextField(blank=True, default='')
+    features = models.JSONField(default=list, blank=True)
+    is_trending = models.BooleanField(default=False, db_index=True)
+    trending_display_order = models.PositiveIntegerField(default=0)
+    is_publicly_available = models.BooleanField(default=True, db_index=True)
+
     # Entitlements / Feature Limits
     entitlements = models.JSONField(default=dict, blank=True)
 
@@ -29,5 +37,10 @@ class Plan(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ['trending_display_order', '-created_at']
+
     def __str__(self):
-        return f"{self.name} ({self.billing_period} - ₹{self.price})"
+        prod_title = f"{self.product.name} - " if self.product else ""
+        return f"{prod_title}{self.name} ({self.billing_period} - ₹{self.price})"
+
