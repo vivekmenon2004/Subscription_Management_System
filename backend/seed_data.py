@@ -1,0 +1,313 @@
+import os
+import django
+from decimal import Decimal
+from datetime import timedelta
+from django.utils import timezone
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'brightloop.settings')
+django.setup()
+
+from apps.accounts.models import User, CustomerProfile
+from apps.catalog.models import Product, ProductVariant
+from apps.plans.models import Plan
+from apps.quotations.models import QuotationTemplate, QuotationTemplateLine
+from apps.subscriptions.models import Subscription, SubscriptionLine
+from apps.billing.models import Tax, Discount, Invoice, InvoiceLine
+from apps.billing.services import generate_invoice_for_period
+from apps.payments.models import Payment
+
+def run_seed():
+    print("[*] Seeding database for Brightloop Subscription Platform...")
+
+    # 1. Users
+    admin, _ = User.objects.get_or_create(
+        email='admin@brightloop.io',
+        defaults={'name': 'Admin User', 'role': User.Role.ADMIN, 'is_staff': True}
+    )
+    admin.set_password('Password123!')
+    admin.save()
+
+    staff, _ = User.objects.get_or_create(
+        email='staff@brightloop.io',
+        defaults={'name': 'Sarah Jenkins', 'role': User.Role.STAFF}
+    )
+    staff.set_password('Password123!')
+    staff.save()
+
+    customer, _ = User.objects.get_or_create(
+        email='customer@acmecorp.com',
+        defaults={'name': 'Rahul Sharma', 'role': User.Role.CUSTOMER}
+    )
+    customer.set_password('Password123!')
+    customer.save()
+    CustomerProfile.objects.get_or_create(
+        user=customer,
+        defaults={
+            'company_name': 'Acme Corp Pvt Ltd',
+            'phone': '+91 98765 43210',
+            'billing_address': '42 Brigade Road, Bangalore 560001',
+            'tax_id': 'GSTIN29AAACA9876Q1Z0'
+        }
+    )
+
+    customer2, _ = User.objects.get_or_create(
+        email='david@nexustech.io',
+        defaults={'name': 'David Miller', 'role': User.Role.CUSTOMER}
+    )
+    customer2.set_password('Password123!')
+    customer2.save()
+    CustomerProfile.objects.get_or_create(
+        user=customer2,
+        defaults={
+            'company_name': 'NexusTech Solutions',
+            'phone': '+91 91234 56789',
+            'billing_address': '88 Cyber City, Gurugram 122002',
+            'tax_id': 'GSTIN07AABCN5544R1Z1'
+        }
+    )
+
+    # 2. Taxes
+    gst18, _ = Tax.objects.get_or_create(
+        name='GST 18%',
+        defaults={'rate': Decimal('18.00'), 'is_inclusive': False, 'is_active': True}
+    )
+    gst5, _ = Tax.objects.get_or_create(
+        name='GST 5%',
+        defaults={'rate': Decimal('5.00'), 'is_inclusive': False, 'is_active': True}
+    )
+
+    # 3. Products & Variants
+    erp, _ = Product.objects.get_or_create(
+        name='Brightloop Cloud ERP',
+        defaults={
+            'type': Product.ProductType.SOFTWARE,
+            'sales_price': Decimal('1000.00'),
+            'cost_price': Decimal('400.00'),
+            'notes': 'Core enterprise resource planning module',
+            'default_tax': gst18,
+            'is_active': True
+        }
+    )
+    v_odoo, _ = ProductVariant.objects.get_or_create(
+        product=erp,
+        attribute='Brand',
+        value='Odoo',
+        defaults={'extra_price': Decimal('560.00')}
+    )
+    v_std, _ = ProductVariant.objects.get_or_create(
+        product=erp,
+        attribute='Brand',
+        value='Standard',
+        defaults={'extra_price': Decimal('0.00')}
+    )
+
+    support, _ = Product.objects.get_or_create(
+        name='24/7 Priority Support SLA',
+        defaults={
+            'type': Product.ProductType.SERVICE,
+            'sales_price': Decimal('3000.00'),
+            'cost_price': Decimal('1200.00'),
+            'notes': '1-hour SLA response time guarantee',
+            'default_tax': gst18,
+            'is_active': True
+        }
+    )
+
+    ai_addon, _ = Product.objects.get_or_create(
+        name='AI Insights & Forecasts',
+        defaults={
+            'type': Product.ProductType.ADDON,
+            'sales_price': Decimal('1500.00'),
+            'cost_price': Decimal('500.00'),
+            'notes': 'Automated predictive forecasting module',
+            'default_tax': gst18,
+            'is_active': True
+        }
+    )
+
+    # 4. Plans
+    p_monthly, _ = Plan.objects.get_or_create(
+        name='Standard Monthly Plan',
+        defaults={
+            'price': Decimal('4999.00'),
+            'billing_period': Plan.BillingPeriod.MONTHLY,
+            'min_quantity': 1,
+            'available_from': timezone.now().date() - timedelta(days=60),
+            'auto_close': False,
+            'closable': True,
+            'pausable': True,
+            'renewable': True,
+            'is_active': True
+        }
+    )
+    p_yearly, _ = Plan.objects.get_or_create(
+        name='Enterprise Annual Plan',
+        defaults={
+            'price': Decimal('49999.00'),
+            'billing_period': Plan.BillingPeriod.YEARLY,
+            'min_quantity': 1,
+            'available_from': timezone.now().date() - timedelta(days=120),
+            'auto_close': False,
+            'closable': True,
+            'pausable': True,
+            'renewable': True,
+            'is_active': True
+        }
+    )
+
+    # 5. Discounts
+    disc10, _ = Discount.objects.get_or_create(
+        name='Early Bird 10% Off',
+        defaults={
+            'type': Discount.DiscountType.PERCENTAGE,
+            'value': Decimal('10.00'),
+            'min_purchase': Decimal('1000.00'),
+            'usage_limit': 50,
+            'scope': Discount.Scope.ALL,
+            'is_active': True
+        }
+    )
+
+    # 6. Quotation Templates
+    template, _ = QuotationTemplate.objects.get_or_create(
+        name='Standard ERP + SLA Template',
+        defaults={
+            'validity_days': 30,
+            'plan': p_monthly,
+            'is_active': True
+        }
+    )
+    QuotationTemplateLine.objects.get_or_create(
+        template=template,
+        product=erp,
+        defaults={'variant': v_odoo, 'quantity': 1}
+    )
+    QuotationTemplateLine.objects.get_or_create(
+        template=template,
+        product=support,
+        defaults={'quantity': 1}
+    )
+
+    # 7. Subscriptions
+    today = timezone.now().date()
+    sub1, _ = Subscription.objects.get_or_create(
+        number='SUB-000001',
+        defaults={
+            'customer': customer,
+            'plan': p_monthly,
+            'status': Subscription.Status.ACTIVE,
+            'start_date': today - timedelta(days=60),
+            'expiry_date': today + timedelta(days=300),
+            'next_billing_date': today,
+            'payment_terms': Subscription.PaymentTerms.NET_30
+        }
+    )
+    if not sub1.lines.exists():
+        SubscriptionLine.objects.create(
+            subscription=sub1,
+            product=erp,
+            variant=v_odoo,
+            quantity=1,
+            unit_price=Decimal('1560.00'),
+            tax=gst18,
+            amount=Decimal('1560.00')
+        )
+        SubscriptionLine.objects.create(
+            subscription=sub1,
+            product=support,
+            quantity=1,
+            unit_price=Decimal('3000.00'),
+            tax=gst18,
+            amount=Decimal('3000.00')
+        )
+
+    sub2, _ = Subscription.objects.get_or_create(
+        number='SUB-000002',
+        defaults={
+            'customer': customer2,
+            'plan': p_yearly,
+            'status': Subscription.Status.ACTIVE,
+            'start_date': today - timedelta(days=90),
+            'expiry_date': today + timedelta(days=275),
+            'next_billing_date': today + timedelta(days=275),
+            'payment_terms': Subscription.PaymentTerms.NET_15
+        }
+    )
+    if not sub2.lines.exists():
+        SubscriptionLine.objects.create(
+            subscription=sub2,
+            product=erp,
+            variant=v_std,
+            quantity=5,
+            unit_price=Decimal('1000.00'),
+            tax=gst18,
+            amount=Decimal('5000.00')
+        )
+
+    # Quotation sub
+    sub3, _ = Subscription.objects.get_or_create(
+        number='SUB-000003',
+        defaults={
+            'customer': customer,
+            'plan': p_monthly,
+            'status': Subscription.Status.QUOTATION,
+            'start_date': today,
+            'expiry_date': today + timedelta(days=30),
+            'next_billing_date': today,
+            'payment_terms': Subscription.PaymentTerms.NET_30
+        }
+    )
+    if not sub3.lines.exists():
+        SubscriptionLine.objects.create(
+            subscription=sub3,
+            product=ai_addon,
+            quantity=2,
+            unit_price=Decimal('1500.00'),
+            tax=gst18,
+            amount=Decimal('3000.00')
+        )
+
+    # 8. Invoices
+    # Invoice 1: Paid invoice
+    inv1, created1 = generate_invoice_for_period(sub1, today - timedelta(days=60), today - timedelta(days=30))
+    if created1 or inv1.status != Invoice.Status.PAID:
+        inv1.status = Invoice.Status.PAID
+        inv1.amount_paid = inv1.total
+        inv1.save()
+        Payment.objects.get_or_create(
+            invoice=inv1,
+            defaults={
+                'method': Payment.Method.BANK_TRANSFER,
+                'amount': inv1.total,
+                'payment_date': today - timedelta(days=50),
+                'note': 'Bank wire ref #HDFC998231',
+                'recorded_by': staff
+            }
+        )
+
+    # Invoice 2: Overdue invoice (for dashboard alerts & testing overdue logic!)
+    inv2, created2 = generate_invoice_for_period(sub1, today - timedelta(days=30), today)
+    if inv2:
+        inv2.status = Invoice.Status.CONFIRMED
+        inv2.issue_date = today - timedelta(days=25)
+        inv2.due_date = today - timedelta(days=5)  # 5 days overdue!
+        inv2.amount_paid = Decimal('1000.00')      # Partial payment
+        inv2.save()
+        Payment.objects.get_or_create(
+            invoice=inv2,
+            defaults={
+                'method': Payment.Method.UPI,
+                'amount': Decimal('1000.00'),
+                'payment_date': today - timedelta(days=10),
+                'note': 'Initial token via UPI',
+                'recorded_by': staff
+            }
+        )
+
+    print("[SUCCESS] Database seeding completed successfully!")
+    print(f"   Admin: {admin.email} (Password: Password123!)")
+    print(f"   Staff: {staff.email} (Password: Password123!)")
+    print(f"   Customer: {customer.email} (Password: Password123!)")
+
+if __name__ == '__main__':
+    run_seed()
