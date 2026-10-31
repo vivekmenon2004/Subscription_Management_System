@@ -178,6 +178,7 @@ def run_seed():
     p_monthly, _ = Plan.objects.get_or_create(
         name='Standard Monthly Plan',
         defaults={
+            'product': erp,
             'price': Decimal('4999.00'),
             'billing_period': Plan.BillingPeriod.MONTHLY,
             'min_quantity': 1,
@@ -186,16 +187,40 @@ def run_seed():
             'closable': True,
             'pausable': True,
             'renewable': True,
-            'entitlements': {"tier": "Professional", "max_users": 10, "features": ["standard_reporting"]},
+            'is_trending': True,
+            'trending_display_order': 1,
+            'is_publicly_available': True,
+            'description': 'Full ERP accounting, multi-currency invoicing, and real-time inventory ledger for growing companies.',
+            'features': [
+                'Complete General Ledger & Invoicing',
+                'Real-Time Inventory Tracking',
+                '10 Team Members Included',
+                'Instant Web & Desktop App Launch',
+                'Export Reports to PDF & Excel'
+            ],
+            'entitlements': {"tier": "Professional", "max_users": 10, "features": ["general_ledger", "invoice_management", "inventory_tracking", "export_pdf"]},
             'is_active': True
         }
     )
-    p_monthly.entitlements = {"tier": "Professional", "max_users": 10, "features": ["standard_reporting"]}
+    p_monthly.product = erp
+    p_monthly.is_trending = True
+    p_monthly.trending_display_order = 1
+    p_monthly.is_publicly_available = True
+    p_monthly.description = 'Full ERP accounting, multi-currency invoicing, and real-time inventory ledger for growing companies.'
+    p_monthly.features = [
+        'Complete General Ledger & Invoicing',
+        'Real-Time Inventory Tracking',
+        '10 Team Members Included',
+        'Instant Web & Desktop App Launch',
+        'Export Reports to PDF & Excel'
+    ]
+    p_monthly.entitlements = {"tier": "Professional", "max_users": 10, "features": ["general_ledger", "invoice_management", "inventory_tracking", "export_pdf"]}
     p_monthly.save()
 
     p_yearly, _ = Plan.objects.get_or_create(
         name='Enterprise Annual Plan',
         defaults={
+            'product': erp,
             'price': Decimal('49999.00'),
             'billing_period': Plan.BillingPeriod.YEARLY,
             'min_quantity': 1,
@@ -204,12 +229,111 @@ def run_seed():
             'closable': True,
             'pausable': True,
             'renewable': True,
+            'is_trending': True,
+            'trending_display_order': 2,
+            'is_publicly_available': True,
+            'description': 'Complete enterprise suite with priority SLA, advanced audits, and unlimited organizational scale.',
+            'features': [
+                'All Professional ERP Features',
+                'Dedicated Technical Account Manager',
+                '50 Team Members Included',
+                'Custom Organization Branding & Protocol',
+                '2 Months Free with Annual Billing'
+            ],
             'entitlements': {"tier": "Enterprise", "max_users": 50, "features": ["advanced_reporting", "audit_trail", "custom_branding"]},
             'is_active': True
         }
     )
+    p_yearly.product = erp
+    p_yearly.is_trending = True
+    p_yearly.trending_display_order = 2
+    p_yearly.is_publicly_available = True
+    p_yearly.description = 'Complete enterprise suite with priority SLA, advanced audits, and unlimited organizational scale.'
+    p_yearly.features = [
+        'All Professional ERP Features',
+        'Dedicated Technical Account Manager',
+        '50 Team Members Included',
+        'Custom Organization Branding & Protocol',
+        '2 Months Free with Annual Billing'
+    ]
     p_yearly.entitlements = {"tier": "Enterprise", "max_users": 50, "features": ["advanced_reporting", "audit_trail", "custom_branding"]}
     p_yearly.save()
+
+    p_starter, _ = Plan.objects.get_or_create(
+        name='Starter Monthly Plan',
+        defaults={
+            'product': erp,
+            'price': Decimal('1999.00'),
+            'billing_period': Plan.BillingPeriod.MONTHLY,
+            'min_quantity': 1,
+            'is_trending': False,
+            'trending_display_order': 5,
+            'is_publicly_available': True,
+            'description': 'Essential billing and financial tools designed for lean startups and single operators.',
+            'features': [
+                'Basic Invoice Generation',
+                'Up to 3 Users',
+                'Automated PDF Receipts'
+            ],
+            'entitlements': {"tier": "Starter", "max_users": 3, "features": ["basic_invoicing"]},
+            'is_active': True
+        }
+    )
+    p_starter.product = erp
+    p_starter.is_publicly_available = True
+    p_starter.save()
+
+    p_support_plan, _ = Plan.objects.get_or_create(
+        name='24/7 SLA Protection Plan',
+        defaults={
+            'product': support,
+            'price': Decimal('3000.00'),
+            'billing_period': Plan.BillingPeriod.MONTHLY,
+            'min_quantity': 1,
+            'is_trending': True,
+            'trending_display_order': 3,
+            'is_publicly_available': True,
+            'description': 'Guaranteed 1-hour engineering response time for business-critical operational disruptions.',
+            'features': [
+                '24/7 Direct Hotline & Private Chat',
+                'Guaranteed 1-Hour Urgent Response SLA',
+                'Named Escalation Lead Engineer'
+            ],
+            'entitlements': {"features": ["ticket_priority", "phone_support", "sla_guarantee"]},
+            'is_active': True
+        }
+    )
+    p_support_plan.product = support
+    p_support_plan.is_trending = True
+    p_support_plan.trending_display_order = 3
+    p_support_plan.is_publicly_available = True
+    p_support_plan.save()
+
+    p_ai_plan, _ = Plan.objects.get_or_create(
+        name='Predictive Analytics Suite',
+        defaults={
+            'product': ai_addon,
+            'price': Decimal('1500.00'),
+            'billing_period': Plan.BillingPeriod.MONTHLY,
+            'min_quantity': 1,
+            'is_trending': True,
+            'trending_display_order': 4,
+            'is_publicly_available': True,
+            'description': 'Real-time cashflow predictions and AI-driven churn risk modeling.',
+            'features': [
+                'Predictive MRR & ARR Forecasting',
+                'Automated Churn Anomaly Warnings',
+                'Scenario Cashflow Simulation'
+            ],
+            'entitlements': {"features": ["ai_prediction", "cashflow_charting", "anomaly_detection"]},
+            'is_active': True
+        }
+    )
+    p_ai_plan.product = ai_addon
+    p_ai_plan.is_trending = True
+    p_ai_plan.trending_display_order = 4
+    p_ai_plan.is_publicly_available = True
+    p_ai_plan.save()
 
     # 5. Discounts
     disc10, _ = Discount.objects.get_or_create(

@@ -3,12 +3,18 @@ from apps.accounts.permissions import IsAdmin, IsStaffOrAdmin
 from .models import Plan
 
 class PlanSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    product_type = serializers.CharField(source='product.type', read_only=True)
+    product_icon_url = serializers.CharField(source='product.icon_url', read_only=True)
+
     class Meta:
         model = Plan
         fields = [
-            'id', 'name', 'price', 'billing_period', 'min_quantity',
-            'available_from', 'available_to', 'auto_close', 'closable',
-            'pausable', 'renewable', 'entitlements', 'is_active', 'created_at'
+            'id', 'name', 'product', 'product_name', 'product_type', 'product_icon_url',
+            'price', 'billing_period', 'min_quantity', 'available_from', 'available_to',
+            'description', 'features', 'is_trending', 'trending_display_order',
+            'is_publicly_available', 'auto_close', 'closable', 'pausable',
+            'renewable', 'entitlements', 'is_active', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
 

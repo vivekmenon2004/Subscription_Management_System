@@ -31,8 +31,10 @@ export function PillNav({ activeTab, setActiveTab }) {
   ];
 
   const customerTabs = [
-    { id: 'portal', label: 'My Portal', icon: User },
-    { id: 'dashboard', label: 'Finance View', icon: Home },
+    { id: 'portal', label: 'Marketplace & Discovery Home', icon: Home },
+    { id: 'subscriptions', label: 'My Subscriptions', icon: Repeat },
+    { id: 'invoices', label: 'My Invoices', icon: FileText },
+    { id: 'payments', label: 'Payment History', icon: CreditCard },
   ];
 
   const tabs = activeRole === 'admin' ? adminTabs : (activeRole === 'staff' ? staffTabs : customerTabs);

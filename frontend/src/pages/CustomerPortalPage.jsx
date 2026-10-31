@@ -9,12 +9,14 @@ import {
 import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
+import { CustomerHomePage } from './CustomerHomePage';
 
 export function CustomerPortalPage({ onOpenInvoice }) {
   const { 
     currentUser, 
     subscriptions = [], 
     invoices = [], 
+    payments = [],
     products = [],
     togglePauseSubscription, 
     renewSubscription, 
@@ -26,7 +28,13 @@ export function CustomerPortalPage({ onOpenInvoice }) {
   // AUTH-6: Scoped to customer only
   const mySubscriptions = (subscriptions || []).filter(s => s.customer === currentUser?.id || currentUser?.role !== 'customer');
   const myInvoices = (invoices || []).filter(inv => inv.customer === currentUser?.id || currentUser?.role !== 'customer');
-  const [activeTab, setActiveTab] = useState('products'); // 'products' | 'subs' | 'invoices' | 'profile'
+  const myPayments = (payments || []).filter(p => {
+    // Show payments tied to customer's invoices
+    const subInvNumbers = new Set(myInvoices.map(i => i.id));
+    return subInvNumbers.has(p.invoice) || !p.invoice;
+  });
+
+  const [activeTab, setActiveTab] = useState('home'); // 'home' | 'products' | 'subs' | 'invoices' | 'payments' | 'profile'
   const [subViewMode, setSubViewMode] = useState('slides'); // 'slides' | 'grid'
   const [slideIndex, setSlideIndex] = useState(0);
 
@@ -241,11 +249,17 @@ export function CustomerPortalPage({ onOpenInvoice }) {
         {/* Navigation tabs */}
         <div className="flex items-center gap-1.5 bg-[#F7F6F8] p-1 rounded-xl border border-[#E8E6EB] self-start sm:self-auto flex-wrap">
           <button
-            onClick={() => setActiveTab('products')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${activeTab === 'products' ? 'bg-white text-[#714B67] shadow-sm' : 'text-[#6E6B75] hover:text-[#25232A]'}`}
+            onClick={() => setActiveTab('home')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${activeTab === 'home' ? 'bg-white text-[#714B67] shadow-sm' : 'text-[#6E6B75] hover:text-[#25232A]'}`}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            My Subscribed Products ({subscribedProducts.length})
+            Marketplace Home
+          </button>
+          <button
+            onClick={() => setActiveTab('products')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeTab === 'products' ? 'bg-white text-[#714B67] shadow-sm' : 'text-[#6E6B75] hover:text-[#25232A]'}`}
+          >
+            <span>My Products ({subscribedProducts.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('subs')}
@@ -257,7 +271,13 @@ export function CustomerPortalPage({ onOpenInvoice }) {
             onClick={() => setActiveTab('invoices')}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeTab === 'invoices' ? 'bg-white text-[#714B67] shadow-sm' : 'text-[#6E6B75]'}`}
           >
-            My Invoices ({myInvoices.length})
+            Invoices ({myInvoices.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('payments')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeTab === 'payments' ? 'bg-white text-[#714B67] shadow-sm' : 'text-[#6E6B75]'}`}
+          >
+            Payments ({myPayments.length})
           </button>
           <button
             onClick={() => setActiveTab('profile')}
@@ -279,6 +299,16 @@ export function CustomerPortalPage({ onOpenInvoice }) {
             Dismiss
           </button>
         </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB: DISCOVERY & MARKETPLACE HOME PAGE */}
+      {/* ======================================================== */}
+      {activeTab === 'home' && (
+        <CustomerHomePage
+          onNavigateTab={setActiveTab}
+          onOpenInvoice={onOpenInvoice}
+        />
       )}
 
       {/* ======================================================== */}
@@ -883,6 +913,72 @@ export function CustomerPortalPage({ onOpenInvoice }) {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB: PAYMENT HISTORY */}
+      {/* ======================================================== */}
+      {activeTab === 'payments' && (
+        <div className="bg-white rounded-2xl border border-[#E8E6EB] shadow-card overflow-hidden">
+          <div className="p-4 border-b border-[#E8E6EB] flex justify-between items-center">
+            <div>
+              <h3 className="font-semibold text-sm text-[#25232A]">Payment History & Transactions</h3>
+              <p className="text-xs text-[#6E6B75] mt-0.5">Verified server-side payments and receipts recorded on your account.</p>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+              {myPayments.length} transactions
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#FAF9FB] text-[#6E6B75] border-b border-[#E8E6EB]">
+                <tr>
+                  <th className="py-3 px-4 font-semibold">Payment ID</th>
+                  <th className="py-3 px-4 font-semibold">Invoice #</th>
+                  <th className="py-3 px-4 font-semibold">Date</th>
+                  <th className="py-3 px-4 font-semibold">Method</th>
+                  <th className="py-3 px-4 font-semibold text-right">Amount (₹)</th>
+                  <th className="py-3 px-4 font-semibold text-center">Status</th>
+                  <th className="py-3 px-4 font-semibold">Reference / Note</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E8E6EB]">
+                {myPayments.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-gray-500">
+                      No payment transactions recorded yet.
+                    </td>
+                  </tr>
+                ) : (
+                  myPayments.map(p => (
+                    <tr key={p.id} className="hover:bg-[#FAF9FB]/60">
+                      <td className="py-3.5 px-4 font-mono font-medium text-[#714B67]">PAY-{String(p.id).padStart(5, '0')}</td>
+                      <td className="py-3.5 px-4 font-mono font-medium text-[#25232A]">{p.invoice_number || `INV-${p.invoice}`}</td>
+                      <td className="py-3.5 px-4 text-[#6E6B75]">{p.payment_date}</td>
+                      <td className="py-3.5 px-4 capitalize font-medium text-[#25232A]">
+                        {p.method?.replace('_', ' ')}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-bold tabular-nums text-emerald-700">
+                        ₹{Number(p.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          p.is_void ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'
+                        }`}>
+                          {p.is_void ? 'Void' : 'Verified'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-[#6E6B75] max-w-xs truncate">
+                        {p.note || 'Online checkout payment'}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

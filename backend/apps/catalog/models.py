@@ -25,6 +25,9 @@ class Product(models.Model):
     app_protocol = models.CharField(max_length=100, default='brightloop', blank=True)
     is_available = models.BooleanField(default=True)
     is_access_enabled = models.BooleanField(default=True)
+    is_publicly_available = models.BooleanField(default=True, db_index=True)
+    display_order = models.PositiveIntegerField(default=0)
+    published_at = models.DateTimeField(null=True, blank=True)
     entitlements = models.JSONField(default=dict, blank=True)
 
     is_active = models.BooleanField(default=True)
