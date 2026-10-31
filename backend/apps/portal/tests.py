@@ -1,13 +1,16 @@
+from unittest.mock import patch
 from datetime import timedelta
 from decimal import Decimal
+from django.test import override_settings
 from django.utils import timezone
+from razorpay.errors import SignatureVerificationError
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.accounts.models import User
 from apps.catalog.models import Product, ProductLaunchSession
 from apps.plans.models import Plan
-from apps.subscriptions.models import Subscription, SubscriptionLine
+from apps.subscriptions.models import PurchaseOrder, Subscription, SubscriptionLine
 from apps.billing.models import Invoice, InvoiceLine
 from apps.payments.models import Payment
 
@@ -371,25 +374,61 @@ class CustomerDiscoveryAndPurchaseTests(APITestCase):
         self.assertEqual(pricing['tax']['amount'], '809.84')
         self.assertEqual(pricing['total_amount'], '5308.94')
 
-    def test_purchase_initiate_verify_and_activation(self):
+    @override_settings(RAZORPAY_KEY_ID='rzp_test_example', RAZORPAY_KEY_SECRET='test_secret')
+    @patch('apps.portal.purchase_views.razorpay.Client')
+    def test_purchase_initiate_verify_and_activation(self, client_factory):
         self.client.force_authenticate(user=self.customer)
+        client = client_factory.return_value
+        client.order.create.return_value = {'id': 'order_purchase_123'}
         # Step 1: Initiate
         init_res = self.client.post('/api/v1/portal/purchase/initiate', {
             'product_id': self.product.id,
             'plan_id': self.plan.id,
             'quantity': 1,
-            'payment_method': 'upi'
+            'payment_method': 'razorpay',
+            'idempotency_key': 'purchase-test-key'
         })
         self.assertEqual(init_res.status_code, status.HTTP_201_CREATED)
         order_id = init_res.data['order']['id']
         idempotency_key = init_res.data['order']['idempotency_key']
         self.assertEqual(init_res.data['order']['status'], 'Pending')
+        self.assertEqual(init_res.data['payment_checkout']['key_id'], 'rzp_test_example')
+        self.assertEqual(init_res.data['payment_checkout']['order_id'], 'order_purchase_123')
+        self.assertEqual(init_res.data['payment_checkout']['amount'], 530894)
+        client.order.create.assert_called_once()
+
+        order = PurchaseOrder.objects.get(pk=order_id)
+        retry_res = self.client.post('/api/v1/portal/purchase/initiate', {
+            'product_id': self.product.id,
+            'plan_id': self.plan.id,
+            'quantity': 1,
+            'idempotency_key': idempotency_key,
+        }, format='json')
+        self.assertEqual(retry_res.status_code, status.HTTP_200_OK)
+        self.assertEqual(retry_res.data['payment_checkout']['order_id'], 'order_purchase_123')
+        self.assertEqual(PurchaseOrder.objects.filter(customer=self.customer).count(), 1)
+        client.order.create.assert_called_once()
+
+        client.order.fetch.return_value = {
+            'id': 'order_purchase_123',
+            'amount': 530894,
+            'currency': 'INR',
+            'notes': {'purchase_order_id': str(order.id), 'customer_id': str(self.customer.id)},
+        }
+        client.payment.fetch.return_value = {
+            'order_id': 'order_purchase_123',
+            'amount': 530894,
+            'currency': 'INR',
+            'status': 'captured',
+            'method': 'upi',
+        }
 
         # Step 2: Verify & Activate
         verify_res = self.client.post('/api/v1/portal/purchase/verify', {
             'order_id': order_id,
-            'payment_method': 'upi',
-            'payment_reference': 'UPI-REF-998811'
+            'razorpay_order_id': 'order_purchase_123',
+            'razorpay_payment_id': 'pay_purchase_123',
+            'razorpay_signature': 'valid-signature'
         })
         self.assertEqual(verify_res.status_code, status.HTTP_201_CREATED)
         self.assertEqual(verify_res.data['status'], 'success')
@@ -408,10 +447,37 @@ class CustomerDiscoveryAndPurchaseTests(APITestCase):
         # Step 3: Idempotency verification
         duplicate_res = self.client.post('/api/v1/portal/purchase/verify', {
             'order_id': order_id,
-            'payment_method': 'upi'
+            'razorpay_order_id': 'order_purchase_123',
+            'razorpay_payment_id': 'pay_purchase_123',
+            'razorpay_signature': 'valid-signature'
         })
         self.assertEqual(duplicate_res.status_code, status.HTTP_200_OK)
         self.assertEqual(duplicate_res.data['subscription']['id'], sub_id)
         # Ensure no duplicate subscription was created
         self.assertEqual(Subscription.objects.filter(customer=self.customer).count(), 1)
 
+    @override_settings(RAZORPAY_KEY_ID='rzp_test_example', RAZORPAY_KEY_SECRET='test_secret')
+    @patch('apps.portal.purchase_views.razorpay.Client')
+    def test_invalid_purchase_signature_cannot_activate_subscription(self, client_factory):
+        self.client.force_authenticate(user=self.customer)
+        client = client_factory.return_value
+        client.order.create.return_value = {'id': 'order_purchase_bad_sig'}
+        init_res = self.client.post('/api/v1/portal/purchase/initiate', {
+            'product_id': self.product.id,
+            'plan_id': self.plan.id,
+            'quantity': 1,
+            'idempotency_key': 'purchase-invalid-signature',
+        }, format='json')
+        self.assertEqual(init_res.status_code, status.HTTP_201_CREATED)
+
+        client.utility.verify_payment_signature.side_effect = SignatureVerificationError()
+        response = self.client.post('/api/v1/portal/purchase/verify', {
+            'order_id': init_res.data['order']['id'],
+            'razorpay_order_id': 'order_purchase_bad_sig',
+            'razorpay_payment_id': 'pay_invalid',
+            'razorpay_signature': 'invalid-signature',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Subscription.objects.filter(customer=self.customer).count(), 0)
+        self.assertEqual(Payment.objects.count(), 0)

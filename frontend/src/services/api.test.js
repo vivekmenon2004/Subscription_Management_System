@@ -93,4 +93,17 @@ describe('JWT API client', () => {
       data: { email: ['An account with this email already exists.'] }
     });
   });
+
+  it('surfaces purchase API error messages', async () => {
+    fetch.mockResolvedValueOnce(jsonResponse(400, {
+      error: 'Product does not exist.'
+    }));
+
+    await expect(
+      apiRequest('/portal/purchase/quote', 'POST', { product_id: 999, plan_id: 999 })
+    ).rejects.toMatchObject({
+      message: 'Product does not exist.',
+      status: 400
+    });
+  });
 });

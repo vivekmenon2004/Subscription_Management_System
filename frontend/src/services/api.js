@@ -48,6 +48,7 @@ async function parseResponse(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     const message = data.detail
+      || data.error
       || data.non_field_errors?.[0]
       || Object.values(data).find(value => Array.isArray(value))?.[0]
       || `API request failed (${response.status})`;

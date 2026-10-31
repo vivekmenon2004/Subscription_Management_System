@@ -117,6 +117,8 @@ class PurchaseOrder(models.Model):
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.PENDING, db_index=True)
     payment_method = models.CharField(max_length=50, default='upi')
     payment_reference = models.CharField(max_length=255, blank=True, default='')
+    razorpay_order_id = models.CharField(max_length=100, blank=True, null=True, unique=True)
+    razorpay_payment_id = models.CharField(max_length=100, blank=True, null=True, unique=True)
     idempotency_key = models.CharField(max_length=128, unique=True, db_index=True)
     
     subscription = models.ForeignKey(Subscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders')
@@ -135,4 +137,3 @@ class PurchaseOrder(models.Model):
 
     def __str__(self):
         return f"{self.order_number} - {self.customer.email} ({self.status}) ₹{self.total_amount}"
-

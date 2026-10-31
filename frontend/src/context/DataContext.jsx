@@ -1021,6 +1021,7 @@ export function DataProvider({ children }) {
         quantity
       });
     } catch (err) {
+      if (!isDemo) throw err;
       // Local fallback calculation for offline or mock demo preview
       const prod = products.find(p => p.id === productId) || {};
       const plan = plans.find(p => p.id === planId) || {};
@@ -1044,9 +1045,9 @@ export function DataProvider({ children }) {
         customer_warning: { already_subscribed: false }
       };
     }
-  }, [products, plans]);
+  }, [isDemo, products, plans]);
 
-  const initiatePurchase = async ({ productId, planId, variantId = null, quantity = 1, paymentMethod = 'upi', idempotencyKey = null }) => {
+  const initiatePurchase = async ({ productId, planId, variantId = null, quantity = 1, paymentMethod = 'razorpay', idempotencyKey = null }) => {
     try {
       return await apiRequest('/portal/purchase/initiate', 'POST', {
         product_id: productId,
@@ -1057,6 +1058,7 @@ export function DataProvider({ children }) {
         idempotency_key: idempotencyKey
       });
     } catch (err) {
+      if (!isDemo) throw err;
       const orderId = Date.now();
       const orderNumber = `ORD-2026-${String(orderId).slice(-6)}`;
       return {
@@ -1066,19 +1068,24 @@ export function DataProvider({ children }) {
     }
   };
 
-  const verifyPurchase = async ({ orderId, orderNumber, paymentMethod = 'upi', paymentReference = null, idempotencyKey = null }) => {
+  const verifyPurchase = async ({
+    orderId,
+    razorpayOrderId,
+    razorpayPaymentId,
+    razorpaySignature
+  }) => {
     try {
       const result = await apiRequest('/portal/purchase/verify', 'POST', {
         order_id: orderId,
-        order_number: orderNumber,
-        payment_method: paymentMethod,
-        payment_reference: paymentReference,
-        idempotency_key: idempotencyKey
+        razorpay_order_id: razorpayOrderId,
+        razorpay_payment_id: razorpayPaymentId,
+        razorpay_signature: razorpaySignature
       });
       // Synchronize all customer subscriptions, products, invoices, and payments immediately
       await refreshCustomerData();
       return result;
     } catch (err) {
+      if (!isDemo) throw err;
       // Local fallback for offline/demo simulation
       const today = new Date().toISOString().split('T')[0];
       const expiry = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().split('T')[0];

@@ -1,9 +1,19 @@
+import logging
 import uuid
 from decimal import Decimal, ROUND_HALF_UP
 from datetime import timedelta
+
+import razorpay
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
-from django.db.models import Q
 from django.utils import timezone
+from razorpay.errors import (
+    BadRequestError,
+    GatewayError,
+    ServerError,
+    SignatureVerificationError,
+)
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -23,6 +33,47 @@ from apps.billing.serializers import InvoiceSerializer
 from apps.billing.services import round_money, compute_due_date
 from apps.payments.models import Payment
 from apps.payments.serializers import PaymentSerializer
+
+logger = logging.getLogger(__name__)
+RAZORPAY_PROVIDER_ERRORS = (BadRequestError, GatewayError, ServerError)
+
+
+def _razorpay_client():
+    if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
+        raise ImproperlyConfigured('Razorpay is not configured.')
+    return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+
+
+def _create_purchase_checkout(order):
+    client = _razorpay_client()
+    if not order.razorpay_order_id:
+        amount_paise = int(order.total_amount * 100)
+        provider_order = client.order.create(data={
+            'amount': amount_paise,
+            'currency': 'INR',
+            'receipt': order.order_number,
+            'notes': {
+                'purchase_order_id': str(order.pk),
+                'order_number': order.order_number,
+                'customer_id': str(order.customer_id),
+            },
+        })
+        order.razorpay_order_id = provider_order['id']
+        order.payment_method = 'razorpay'
+        order.save(update_fields=['razorpay_order_id', 'payment_method', 'updated_at'])
+
+    return {
+        'key_id': settings.RAZORPAY_KEY_ID,
+        'order_id': order.razorpay_order_id,
+        'amount': int(order.total_amount * 100),
+        'currency': 'INR',
+        'order_number': order.order_number,
+        'customer': {
+            'name': order.customer.name,
+            'email': order.customer.email,
+        },
+    }
+
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -155,6 +206,8 @@ def validate_purchase_request(user, product_id, plan_id, variant_id=None, quanti
         return False, f"Subscription plan '{plan.name}' is no longer active.", None, None, None
     if not plan.is_publicly_available:
         return False, f"Subscription plan '{plan.name}' is not publicly available.", None, None, None
+    if plan.product_id and plan.product_id != product.id:
+        return False, "The selected plan does not belong to this product.", None, None, None
 
     # Check date limits
     today = timezone.now().date()
@@ -192,6 +245,12 @@ class PortalPurchaseQuoteView(APIView):
 
     def post(self, request):
         user = request.user
+        if user.role != 'customer':
+            return Response({"error": "Only customer accounts can purchase subscriptions."}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            _razorpay_client()
+        except ImproperlyConfigured:
+            return Response({"error": "Razorpay credentials are not configured on the server."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         product_id = request.data.get('product_id')
         plan_id = request.data.get('plan_id')
         variant_id = request.data.get('variant_id')
@@ -276,14 +335,37 @@ class PortalPurchaseInitiateView(APIView):
         plan_id = request.data.get('plan_id')
         variant_id = request.data.get('variant_id')
         quantity = request.data.get('quantity', 1)
-        payment_method = request.data.get('payment_method', 'upi')
+        payment_method = 'razorpay'
         idempotency_key = request.data.get('idempotency_key') or str(uuid.uuid4())
 
         # Check existing order with this idempotency key
         existing_order = PurchaseOrder.objects.filter(idempotency_key=idempotency_key, customer=user).first()
         if existing_order:
+            if (
+                str(existing_order.product_id) != str(product_id)
+                or str(existing_order.plan_id) != str(plan_id)
+                or str(existing_order.variant_id or '') != str(variant_id or '')
+                or str(existing_order.quantity) != str(quantity)
+            ):
+                return Response(
+                    {"error": "This idempotency key is already associated with a different checkout."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            if existing_order.status != PurchaseOrder.Status.PENDING:
+                return Response(
+                    {"error": "This checkout order is no longer pending. Start a new checkout."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            try:
+                checkout = _create_purchase_checkout(existing_order)
+            except ImproperlyConfigured:
+                return Response({"error": "Razorpay credentials are not configured on the server."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            except RAZORPAY_PROVIDER_ERRORS:
+                logger.exception('Razorpay order creation failed for purchase order %s.', existing_order.order_number)
+                return Response({"error": "Razorpay could not start checkout. Please try again."}, status=status.HTTP_502_BAD_GATEWAY)
             return Response({
                 'order': PurchaseOrderSerializer(existing_order).data,
+                'payment_checkout': checkout,
                 'message': 'Order retrieved from existing session.'
             }, status=status.HTTP_200_OK)
 
@@ -320,17 +402,17 @@ class PortalPurchaseInitiateView(APIView):
             idempotency_key=idempotency_key
         )
 
+        try:
+            checkout = _create_purchase_checkout(order)
+        except ImproperlyConfigured:
+            return Response({"error": "Razorpay credentials are not configured on the server."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except RAZORPAY_PROVIDER_ERRORS:
+            logger.exception('Razorpay order creation failed for purchase order %s.', order.order_number)
+            return Response({"error": "Razorpay could not start checkout. Please try again."}, status=status.HTTP_502_BAD_GATEWAY)
+
         return Response({
             'order': PurchaseOrderSerializer(order).data,
-            'payment_checkout': {
-                'order_id': order.id,
-                'order_number': order.order_number,
-                'amount': str(order.total_amount),
-                'currency': 'INR',
-                'currency_symbol': '₹',
-                'payment_method': payment_method,
-                'supported_methods': ['upi', 'card', 'bank_transfer', 'cash']
-            }
+            'payment_checkout': checkout
         }, status=status.HTTP_201_CREATED)
 
 
@@ -346,29 +428,98 @@ class PortalPurchaseVerifyView(APIView):
     @transaction.atomic
     def post(self, request):
         user = request.user
+        if user.role != 'customer':
+            return Response({"error": "Only customer accounts can confirm purchases."}, status=status.HTTP_403_FORBIDDEN)
         order_id = request.data.get('order_id')
-        order_number = request.data.get('order_number')
-        idempotency_key = request.data.get('idempotency_key')
-        payment_method = request.data.get('payment_method') or 'upi'
-        payment_reference = request.data.get('payment_reference') or f"PAY-TXN-{uuid.uuid4().hex[:12].upper()}"
+        razorpay_order_id = request.data.get('razorpay_order_id')
+        razorpay_payment_id = request.data.get('razorpay_payment_id')
+        razorpay_signature = request.data.get('razorpay_signature')
+        if not order_id or not all(isinstance(value, str) and value for value in (
+            razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature,
+        )):
+            return Response(
+                {"error": "Purchase order and Razorpay order, payment, and signature values are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            client = _razorpay_client()
+        except ImproperlyConfigured:
+            return Response({"error": "Razorpay credentials are not configured on the server."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        try:
+            client.utility.verify_payment_signature({
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature,
+            })
+        except SignatureVerificationError:
+            return Response({"error": "Razorpay payment signature is invalid."}, status=status.HTTP_400_BAD_REQUEST)
 
         # 1. Lookup order
-        query = Q(customer=user)
-        if order_id:
-            query &= Q(id=order_id)
-        elif order_number:
-            query &= Q(order_number=order_number)
-        elif idempotency_key:
-            query &= Q(idempotency_key=idempotency_key)
-        else:
-            return Response({"error": "order_id, order_number, or idempotency_key is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        order = PurchaseOrder.objects.select_for_update().filter(query).first()
+        order = PurchaseOrder.objects.select_for_update().filter(
+            id=order_id,
+            customer=user,
+            razorpay_order_id=razorpay_order_id,
+        ).first()
         if not order:
             return Response({"error": "Order not found."}, status=status.HTTP_404_NOT_FOUND)
 
+        try:
+            provider_order = client.order.fetch(razorpay_order_id)
+            provider_notes = provider_order.get('notes') or {}
+            amount_paise = int(order.total_amount * 100)
+            if (
+                provider_order.get('id') != order.razorpay_order_id
+                or provider_order.get('amount') != amount_paise
+                or provider_order.get('currency') != 'INR'
+                or provider_notes.get('purchase_order_id') != str(order.pk)
+                or provider_notes.get('customer_id') != str(user.pk)
+            ):
+                return Response(
+                    {"error": "Razorpay order details do not match this purchase."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            provider_payment = client.payment.fetch(razorpay_payment_id)
+            if (
+                provider_payment.get('order_id') != order.razorpay_order_id
+                or provider_payment.get('amount') != amount_paise
+                or provider_payment.get('currency') != 'INR'
+            ):
+                return Response(
+                    {"error": "Razorpay payment details do not match this purchase."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if provider_payment.get('status') == 'authorized':
+                provider_payment = client.payment.capture(razorpay_payment_id, amount_paise)
+            if provider_payment.get('status') != 'captured':
+                return Response(
+                    {"error": "Razorpay has not captured this payment."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        except RAZORPAY_PROVIDER_ERRORS:
+            logger.exception('Razorpay verification failed for purchase order %s.', order.order_number)
+            return Response(
+                {"error": "Razorpay could not verify this payment. Please contact support before retrying."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        payment_method = {
+            'upi': Payment.Method.UPI,
+            'card': Payment.Method.CARD,
+            'netbanking': Payment.Method.BANK_TRANSFER,
+        }.get(provider_payment.get('method'), Payment.Method.OTHER)
+        payment_reference = razorpay_payment_id
+
         # 2. Idempotency guard: If order is already completed, return existing activation
         if order.status == PurchaseOrder.Status.COMPLETED and order.subscription:
+            if order.razorpay_payment_id != razorpay_payment_id:
+                return Response(
+                    {"error": "This purchase has already been completed with a different payment."},
+                    status=status.HTTP_409_CONFLICT,
+                )
             sub = order.subscription
             inv = order.invoice
             pay = order.payment
@@ -483,8 +634,9 @@ class PortalPurchaseVerifyView(APIView):
 
         # 9. Update PurchaseOrder status
         order.status = PurchaseOrder.Status.COMPLETED
-        order.payment_method = payment_method
+        order.payment_method = provider_payment.get('method', payment_method)
         order.payment_reference = payment_reference
+        order.razorpay_payment_id = razorpay_payment_id
         order.subscription = sub
         order.invoice = invoice
         order.payment = payment_obj
