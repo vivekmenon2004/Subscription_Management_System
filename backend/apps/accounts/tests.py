@@ -220,4 +220,4 @@ class JwtAuthenticationTests(APITestCase):
         self.assertIn('password', response.data)
         user = User.objects.get(email=self.credentials['email'])
         self.assertTrue(user.check_password(self.credentials['password']))
->>>>>>> 5d1cbee3b6e6669010d6099732effe6bf0a4af45
+
