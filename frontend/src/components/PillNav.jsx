@@ -28,7 +28,7 @@ export function PillNav({ activeTab, setActiveTab }) {
     <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
       <nav
         aria-label="Primary Navigation"
-        className="flex items-center gap-1.5 p-1.5 bg-white/95 backdrop-blur-md rounded-full border border-[#DDD9E2] shadow-pill"
+        className="glass-nav flex items-center gap-1.5 p-1.5 rounded-full shadow-pill"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -39,10 +39,8 @@ export function PillNav({ activeTab, setActiveTab }) {
               onClick={() => setActiveTab(tab.id)}
               aria-label={tab.label}
               title={tab.label}
-              className={`relative flex items-center justify-center transition-all duration-200 rounded-full ${
-                isActive
-                  ? 'w-10 h-10 bg-[#714B67] text-white shadow-sm scale-105'
-                  : 'w-9 h-9 text-[#6E6B75] hover:text-[#25232A] hover:bg-[#F3F2F5]'
+              className={`glass-nav__item relative flex items-center justify-center transition-all duration-200 rounded-full ${
+                isActive ? 'w-10 h-10 is-active' : 'w-9 h-9'
               }`}
             >
               <Icon className="w-4 h-4" aria-hidden="true" />
