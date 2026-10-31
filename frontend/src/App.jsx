@@ -19,12 +19,13 @@ import { TaxesDiscountsPage } from './pages/TaxesDiscountsPage';
 import { StaffManagementPage } from './pages/StaffManagementPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { CustomerPortalPage } from './pages/CustomerPortalPage';
+import { DemoProductPage } from './pages/DemoProductPage';
 
 function MainApp() {
   const navigate = useNavigate();
   const { currentUser, signOut } = useData();
   const [activeTab, setActiveTab] = useState(() => (
-    currentUser.role === 'customer' ? 'portal' : 'dashboard'
+    currentUser?.role === 'customer' ? 'portal' : 'dashboard'
   ));
   const [activeInvoice, setActiveInvoice] = useState(null);
   const [paymentInvoice, setPaymentInvoice] = useState(null);
@@ -156,6 +157,7 @@ export default function App() {
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/register" element={<AuthPage mode="register" />} />
           <Route path="/app" element={<AuthenticatedApp />} />
+          <Route path="/demo" element={<DemoProductPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

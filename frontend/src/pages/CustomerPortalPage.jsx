@@ -3,7 +3,8 @@ import {
   CheckCircle, Pause, Play, RefreshCw, XCircle,
   FileText, Check,
   Globe, Monitor, ExternalLink, ShieldCheck, Key, Laptop, AlertOctagon,
-  Copy, CheckCircle2, Clock, Sparkles, HelpCircle, Layers
+  Copy, CheckCircle2, Clock, Sparkles, HelpCircle, Layers,
+  Download, AlertCircle, ChevronLeft, ChevronRight, LayoutGrid, Sliders
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
@@ -12,9 +13,9 @@ import { StatusBadge } from '../components/StatusBadge';
 export function CustomerPortalPage({ onOpenInvoice }) {
   const { 
     currentUser, 
-    subscriptions, 
-    invoices, 
-    products,
+    subscriptions = [], 
+    invoices = [], 
+    products = [],
     togglePauseSubscription, 
     renewSubscription, 
     closeSubscription,
@@ -23,9 +24,11 @@ export function CustomerPortalPage({ onOpenInvoice }) {
   } = useData();
 
   // AUTH-6: Scoped to customer only
-  const mySubscriptions = subscriptions.filter(s => s.customer === currentUser.id || currentUser.role !== 'customer');
-  const myInvoices = invoices.filter(inv => inv.customer === currentUser.id || currentUser.role !== 'customer');
+  const mySubscriptions = (subscriptions || []).filter(s => s.customer === currentUser?.id || currentUser?.role !== 'customer');
+  const myInvoices = (invoices || []).filter(inv => inv.customer === currentUser?.id || currentUser?.role !== 'customer');
   const [activeTab, setActiveTab] = useState('products'); // 'products' | 'subs' | 'invoices' | 'profile'
+  const [subViewMode, setSubViewMode] = useState('slides'); // 'slides' | 'grid'
+  const [slideIndex, setSlideIndex] = useState(0);
 
   // Launch state & feedback
   const [launchingProdId, setLaunchingProdId] = useState(null);
@@ -35,9 +38,9 @@ export function CustomerPortalPage({ onOpenInvoice }) {
   const [copiedCode, setCopiedCode] = useState(false);
 
   // Profile Form state
-  const [name, setName] = useState(currentUser.name);
-  const [company, setCompany] = useState(currentUser.customer_profile?.company_name || '');
-  const [phone, setPhone] = useState(currentUser.customer_profile?.phone || '');
+  const [name, setName] = useState(currentUser?.name || '');
+  const [company, setCompany] = useState(currentUser?.customer_profile?.company_name || '');
+  const [phone, setPhone] = useState(currentUser?.customer_profile?.phone || '');
   const [password, setPassword] = useState('');
   const [profileSaved, setProfileSaved] = useState(false);
 
@@ -179,12 +182,16 @@ export function CustomerPortalPage({ onOpenInvoice }) {
       
       // Dispatch protocol directly
       if (res.protocol_url) {
-        // Trigger protocol in hidden iframe / window
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = res.protocol_url;
-        document.body.appendChild(iframe);
-        setTimeout(() => document.body.removeChild(iframe), 3000);
+        try {
+          const link = document.createElement('a');
+          link.href = res.protocol_url;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => document.body.removeChild(link), 1000);
+        } catch (e) {
+          console.warn('[DesktopLaunch] Direct dispatch warning:', e);
+        }
       }
 
       // Show launch modal with ticket details & fallback options
@@ -216,17 +223,17 @@ export function CustomerPortalPage({ onOpenInvoice }) {
       <div className="bg-white rounded-2xl border border-[#E8E6EB] p-5 shadow-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-[#714B67] text-white flex items-center justify-center font-bold text-lg shadow-sm">
-            {currentUser.name.charAt(0)}
+            {(currentUser?.name || 'Customer').charAt(0)}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-[#25232A]">{currentUser.name}</h2>
+              <h2 className="text-lg font-bold text-[#25232A]">{currentUser?.name || 'Customer'}</h2>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#F5EEF3] text-[#714B67] border border-[#E8DCE5]">
                 Self-Service Portal
               </span>
             </div>
             <p className="text-xs text-[#6E6B75] mt-0.5">
-              {currentUser.customer_profile?.company_name ? `${currentUser.customer_profile.company_name} · ` : ''}{currentUser.email}
+              {currentUser?.customer_profile?.company_name ? `${currentUser.customer_profile.company_name} · ` : ''}{currentUser?.email || ''}
             </p>
           </div>
         </div>
@@ -429,8 +436,14 @@ export function CustomerPortalPage({ onOpenInvoice }) {
                           size="md"
                           icon={Globe}
                           className="w-full justify-center"
-                          disabled={!item.access_allowed || launchingProdId === item.product_id}
-                          onClick={() => handleOpenInWeb(item)}
+                          disabled={launchingProdId === item.product_id}
+                          onClick={() => {
+                            if (!item.access_allowed) {
+                              setLaunchError(`Web Access Restricted: ${item.access_reason}`);
+                              return;
+                            }
+                            handleOpenInWeb(item);
+                          }}
                         >
                           {launchingProdId === item.product_id ? 'Verifying...' : 'Open in Web'}
                         </Button>
@@ -441,8 +454,14 @@ export function CustomerPortalPage({ onOpenInvoice }) {
                           size="md"
                           icon={Monitor}
                           className="w-full justify-center"
-                          disabled={!item.access_allowed || launchingProdId === item.product_id}
-                          onClick={() => handleOpenInApp(item)}
+                          disabled={launchingProdId === item.product_id}
+                          onClick={() => {
+                            if (!item.access_allowed) {
+                              setLaunchError(`Desktop Access Restricted: ${item.access_reason}`);
+                              return;
+                            }
+                            handleOpenInApp(item);
+                          }}
                         >
                           {launchingProdId === item.product_id ? 'Generating...' : 'Open in App'}
                         </Button>
@@ -547,76 +566,277 @@ export function CustomerPortalPage({ onOpenInvoice }) {
       {/* ======================================================== */}
       {activeTab === 'subs' && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-[#25232A]">Active & Past Subscriptions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {mySubscriptions.map(sub => (
-              <div key={sub.id} className="bg-white rounded-2xl border border-[#E8E6EB] p-5 shadow-card flex flex-col justify-between space-y-4">
-                <div>
-                  <div className="flex justify-between items-start">
-                    <span className="font-mono text-xs font-semibold text-[#714B67]">{sub.number}</span>
-                    <StatusBadge status={sub.status} isPaused={sub.is_paused} />
-                  </div>
-                  <h4 className="font-bold text-base text-[#25232A] mt-2">{sub.plan_details?.name}</h4>
-                  <p className="text-xl font-black text-[#25232A] mt-1 tabular-nums">
-                    ₹{sub.total_recurring_amount}
-                    <span className="text-xs font-normal text-[#6E6B75]"> / {sub.plan_details?.billing_period}</span>
-                  </p>
-                </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-[#25232A]">Active & Past Subscriptions</h3>
+              <p className="text-xs text-[#6E6B75] mt-0.5">Manage recurring terms, renewals, and self-service lifecycle actions.</p>
+            </div>
 
-                <div className="bg-[#FAF9FB] p-3 rounded-xl border border-[#E8E6EB] space-y-1 text-xs">
-                  <div className="flex justify-between text-[#6E6B75]">
-                    <span>Next Billing Date:</span>
-                    <span className="font-medium text-[#25232A]">{sub.next_billing_date || 'N/A'}</span>
-                  </div>
-                  <div className="flex justify-between text-[#6E6B75]">
-                    <span>Expiry Date:</span>
-                    <span className="font-medium text-[#25232A]">{sub.expiry_date || 'Ongoing'}</span>
-                  </div>
-                  <div className="flex justify-between text-[#6E6B75]">
-                    <span>Included Lines:</span>
-                    <span className="font-medium text-[#25232A]">{sub.lines.length} service(s)</span>
-                  </div>
-                </div>
-
-                {/* Self service controls (PORT-3) */}
-                {sub.status === 'Active' && (
-                  <div className="pt-2 border-t border-[#E8E6EB] flex items-center justify-between gap-2">
-                    {sub.plan_details?.pausable && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        icon={sub.is_paused ? Play : Pause}
-                        onClick={() => togglePauseSubscription(sub.id)}
-                      >
-                        {sub.is_paused ? 'Resume' : 'Pause'}
-                      </Button>
-                    )}
-                    {sub.plan_details?.renewable && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        icon={RefreshCw}
-                        onClick={() => renewSubscription(sub.id)}
-                      >
-                        Renew
-                      </Button>
-                    )}
-                    {sub.plan_details?.closable && (
-                      <Button
-                        variant="outlined"
-                        size="sm"
-                        icon={XCircle}
-                        className="text-[#DC2626] border-[#FECACA] hover:bg-[#FEE2E2]"
-                        onClick={() => closeSubscription(sub.id, 'Cancelled by customer via self-service portal')}
-                      >
-                        Cancel
-                      </Button>
-                    )}
-                  </div>
-                )}
+            {/* View Mode Toggle: Slide Animation vs Grid View */}
+            {mySubscriptions.length > 0 && (
+              <div className="flex items-center gap-1 bg-[#F3F2F5] p-1 rounded-xl border border-[#E8E6EB] self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setSubViewMode('slides')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    subViewMode === 'slides' ? 'bg-[#714B67] text-white shadow-xs' : 'text-[#6E6B75] hover:text-[#25232A]'
+                  }`}
+                  aria-label="View as Slide Animation"
+                >
+                  <Sliders className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Slide View</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSubViewMode('grid')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    subViewMode === 'grid' ? 'bg-[#714B67] text-white shadow-xs' : 'text-[#6E6B75] hover:text-[#25232A]'
+                  }`}
+                  aria-label="View as Card Grid"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" aria-hidden="true" />
+                  <span>Grid View</span>
+                </button>
               </div>
-            ))}
+            )}
           </div>
+
+          {mySubscriptions.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-[#E8E6EB] p-8 text-center text-xs text-[#6E6B75] shadow-card">
+              <Layers className="w-8 h-8 text-[#8C8895] mx-auto mb-2 opacity-50" />
+              <p className="font-semibold text-[#25232A]">No subscriptions found</p>
+              <p className="mt-1">You currently have no active or archived subscriptions associated with this account.</p>
+            </div>
+          ) : subViewMode === 'slides' ? (
+            /* ======================================================== */
+            /* SLIDE ANIMATION VIEW (Carousel with animated sliding) */
+            /* ======================================================== */
+            <div className="bg-white rounded-2xl border border-[#E8E6EB] p-6 shadow-card space-y-6">
+              <div className="flex items-center justify-between text-xs border-b border-[#E8E6EB] pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#714B67]"></span>
+                  <span className="font-semibold text-[#25232A]">Subscription Slide Animation</span>
+                  <span className="text-[#6E6B75]">
+                    (Showing {Math.min(slideIndex + 1, mySubscriptions.length)} of {mySubscriptions.length})
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSlideIndex(prev => (prev > 0 ? prev - 1 : mySubscriptions.length - 1))}
+                    className="p-1.5 rounded-lg border border-[#D7D4DC] hover:bg-[#F3F2F5] text-[#25232A] transition-colors"
+                    aria-label="Previous subscription slide"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSlideIndex(prev => (prev < mySubscriptions.length - 1 ? prev + 1 : 0))}
+                    className="p-1.5 rounded-lg border border-[#D7D4DC] hover:bg-[#F3F2F5] text-[#25232A] transition-colors"
+                    aria-label="Next subscription slide"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Animated Slide Stage */}
+              <div className="overflow-hidden relative">
+                <div 
+                  className="flex transition-transform duration-500 ease-out"
+                  style={{ transform: `translateX(-${(slideIndex % mySubscriptions.length) * 100}%)` }}
+                >
+                  {mySubscriptions.map(sub => (
+                    <div 
+                      key={sub.id} 
+                      className="w-full shrink-0 px-2"
+                    >
+                      <div className="bg-gradient-to-br from-[#FAF9FB] via-white to-[#FAF9FB] rounded-2xl border border-[#E8E6EB] p-6 space-y-5 shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-xs font-semibold text-[#714B67] bg-[#F5EEF3] px-2.5 py-1 rounded-md border border-[#E8DCE5]">
+                                {sub.number}
+                              </span>
+                              <StatusBadge status={sub.status} isPaused={sub.is_paused} />
+                            </div>
+                            <h4 className="font-bold text-xl text-[#25232A] mt-3">{sub.plan_details?.name || 'Custom Plan'}</h4>
+                            <p className="text-2xl font-black text-[#25232A] mt-1 tabular-nums">
+                              ₹{sub.total_recurring_amount}
+                              <span className="text-xs font-normal text-[#6E6B75]"> / {sub.plan_details?.billing_period}</span>
+                            </p>
+                          </div>
+
+                          <div className="bg-white p-3.5 rounded-xl border border-[#E8E6EB] space-y-1.5 text-xs sm:w-72 shadow-xs">
+                            <div className="flex justify-between text-[#6E6B75]">
+                              <span>Next Billing Date:</span>
+                              <span className="font-medium text-[#25232A]">{sub.next_billing_date || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between text-[#6E6B75]">
+                              <span>Expiry Date:</span>
+                              <span className="font-medium text-[#25232A]">{sub.expiry_date || 'Ongoing Recurring'}</span>
+                            </div>
+                            <div className="flex justify-between text-[#6E6B75]">
+                              <span>Included Items:</span>
+                              <span className="font-medium text-[#25232A]">{sub.lines?.length || 0} service line(s)</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Line items snippet */}
+                        {sub.lines && sub.lines.length > 0 && (
+                          <div className="pt-3 border-t border-[#E8E6EB]">
+                            <p className="text-xs font-semibold text-[#6E6B75] mb-2">Subscribed Services & Editions:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {sub.lines.map((ln, idx) => (
+                                <span 
+                                  key={idx}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-[#E8E6EB] rounded-lg text-xs font-medium text-[#25232A]"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5 text-[#714B67]" />
+                                  {ln.product_name || 'Software Product'}
+                                  {ln.variant_name && <span className="text-[#8C8895]">({ln.variant_name})</span>}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Self service controls (PORT-3) */}
+                        {sub.status === 'Active' && (
+                          <div className="pt-3 border-t border-[#E8E6EB] flex flex-wrap items-center justify-between gap-3">
+                            <span className="text-xs text-[#6E6B75]">Self-Service Lifecycle Actions:</span>
+                            <div className="flex items-center gap-2">
+                              {sub.plan_details?.pausable && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  icon={sub.is_paused ? Play : Pause}
+                                  onClick={() => togglePauseSubscription(sub.id)}
+                                >
+                                  {sub.is_paused ? 'Resume Subscription' : 'Pause Subscription'}
+                                </Button>
+                              )}
+                              {sub.plan_details?.renewable && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  icon={RefreshCw}
+                                  onClick={() => renewSubscription(sub.id)}
+                                >
+                                  Renew Now
+                                </Button>
+                              )}
+                              {sub.plan_details?.closable && (
+                                <Button
+                                  variant="outlined"
+                                  size="sm"
+                                  icon={XCircle}
+                                  className="text-[#DC2626] border-[#FECACA] hover:bg-[#FEE2E2]"
+                                  onClick={() => closeSubscription(sub.id, 'Cancelled by customer via self-service portal')}
+                                >
+                                  Cancel Subscription
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dot Indicators */}
+              <div className="flex items-center justify-center gap-2 pt-2">
+                {mySubscriptions.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSlideIndex(idx)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      (slideIndex % mySubscriptions.length) === idx ? 'w-6 bg-[#714B67]' : 'w-2 bg-[#D7D4DC] hover:bg-[#8C8895]'
+                    }`}
+                    aria-label={`Go to subscription slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* ======================================================== */
+            /* GRID VIEW (Original 2-column cards) */
+            /* ======================================================== */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {mySubscriptions.map(sub => (
+                <div key={sub.id} className="bg-white rounded-2xl border border-[#E8E6EB] p-5 shadow-card flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <span className="font-mono text-xs font-semibold text-[#714B67]">{sub.number}</span>
+                      <StatusBadge status={sub.status} isPaused={sub.is_paused} />
+                    </div>
+                    <h4 className="font-bold text-base text-[#25232A] mt-2">{sub.plan_details?.name}</h4>
+                    <p className="text-xl font-black text-[#25232A] mt-1 tabular-nums">
+                      ₹{sub.total_recurring_amount}
+                      <span className="text-xs font-normal text-[#6E6B75]"> / {sub.plan_details?.billing_period}</span>
+                    </p>
+                  </div>
+
+                  <div className="bg-[#FAF9FB] p-3 rounded-xl border border-[#E8E6EB] space-y-1 text-xs">
+                    <div className="flex justify-between text-[#6E6B75]">
+                      <span>Next Billing Date:</span>
+                      <span className="font-medium text-[#25232A]">{sub.next_billing_date || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between text-[#6E6B75]">
+                      <span>Expiry Date:</span>
+                      <span className="font-medium text-[#25232A]">{sub.expiry_date || 'Ongoing'}</span>
+                    </div>
+                    <div className="flex justify-between text-[#6E6B75]">
+                      <span>Included Lines:</span>
+                      <span className="font-medium text-[#25232A]">{sub.lines.length} service(s)</span>
+                    </div>
+                  </div>
+
+                  {/* Self service controls (PORT-3) */}
+                  {sub.status === 'Active' && (
+                    <div className="pt-2 border-t border-[#E8E6EB] flex items-center justify-between gap-2">
+                      {sub.plan_details?.pausable && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={sub.is_paused ? Play : Pause}
+                          onClick={() => togglePauseSubscription(sub.id)}
+                        >
+                          {sub.is_paused ? 'Resume' : 'Pause'}
+                        </Button>
+                      )}
+                      {sub.plan_details?.renewable && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={RefreshCw}
+                          onClick={() => renewSubscription(sub.id)}
+                        >
+                          Renew
+                        </Button>
+                      )}
+                      {sub.plan_details?.closable && (
+                        <Button
+                          variant="outlined"
+                          size="sm"
+                          icon={XCircle}
+                          className="text-[#DC2626] border-[#FECACA] hover:bg-[#FEE2E2]"
+                          onClick={() => closeSubscription(sub.id, 'Cancelled by customer via self-service portal')}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -899,7 +1119,7 @@ export function CustomerPortalPage({ onOpenInvoice }) {
             <div className="bg-[#FAF9FB] p-3 rounded-xl border border-[#E8E6EB] text-xs space-y-2">
               <div className="flex justify-between text-[#6E6B75]">
                 <span>Customer:</span>
-                <span className="font-medium text-[#25232A]">{currentUser.name} ({currentUser.email})</span>
+                <span className="font-medium text-[#25232A]">{currentUser?.name || 'Customer'} ({currentUser?.email || ''})</span>
               </div>
               <div className="flex justify-between text-[#6E6B75]">
                 <span>Subscription:</span>
