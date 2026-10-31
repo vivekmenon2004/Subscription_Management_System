@@ -24,6 +24,7 @@ export const loginSchema = z.object({
 export const registerSchema = z.object({
   fullName: z.string().trim().min(1, 'Enter your full name.'),
   companyName: z.string().trim().optional(),
+  role: z.enum(['customer', 'staff']),
   email: z.string().trim().email('Enter a valid work email address.'),
   password: passwordSchema,
   confirmPassword: z.string().min(1, 'Confirm your password.'),

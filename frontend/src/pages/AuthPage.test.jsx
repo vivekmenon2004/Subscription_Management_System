@@ -39,6 +39,7 @@ function validRegistration(overrides = {}) {
   return {
     fullName: 'Alex Morgan',
     companyName: '',
+    role: 'customer',
     email: 'alex@example.com',
     password: 'Abcdefgh1!',
     confirmPassword: 'Abcdefgh1!',
@@ -115,7 +116,8 @@ describe('Brightloop auth page', () => {
       email: 'admin@brightloop.io',
       password: 'Abcdefgh1!',
       name: 'Alex Morgan',
-      companyName: ''
+      companyName: '',
+      role: 'customer'
     });
   });
 
@@ -154,8 +156,19 @@ describe('Brightloop auth page', () => {
       email: 'alex@example.com',
       password: 'Abcdefgh1!',
       name: 'Alex Morgan',
-      companyName: ''
+      companyName: '',
+      role: 'customer'
     }));
     await waitFor(() => expect(screen.getByTestId('current-path')).toHaveTextContent('/app'));
+  });
+
+  it('requires administrator provisioning for a staff account', async () => {
+    renderAuth('/register');
+    fireEvent.click(screen.getByRole('radio', { name: /Staff/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create your account' }));
+
+    expect(await screen.findByText(/Staff accounts must be created by an administrator/)).toBeInTheDocument();
+    expect(authActions.registerAccount).not.toHaveBeenCalled();
+    expect(screen.getByTestId('current-path')).toHaveTextContent('/register');
   });
 });

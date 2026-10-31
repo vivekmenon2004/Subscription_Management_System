@@ -385,11 +385,11 @@ export function DataProvider({ children }) {
     return response.user;
   };
 
-  const registerAccount = async ({ email, password, name, companyName }) => {
+  const registerAccount = async ({ email, password, name, companyName, role }) => {
     const response = await apiRequest(
       '/auth/register',
       'POST',
-      { email, password, name, company_name: companyName || '' },
+      { email, password, name, company_name: companyName || '', role },
       { auth: false }
     );
     acceptAuthentication(response, false);

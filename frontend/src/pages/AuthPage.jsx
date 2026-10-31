@@ -264,10 +264,11 @@ export function AuthPage({ mode }) {
     mode: 'onTouched',
     reValidateMode: 'onChange',
     criteriaMode: 'all',
-    defaultValues: { acceptedTerms: false, companyName: '' }
+    defaultValues: { acceptedTerms: false, companyName: '', role: 'customer' }
   });
   const password = useWatch({ control, name: 'password' }) || '';
   const confirmPassword = useWatch({ control, name: 'confirmPassword' }) || '';
+  const accountRole = useWatch({ control, name: 'role' }) || 'customer';
 
   useEffect(() => {
     if (!pendingTabFocus.current) return;
@@ -297,13 +298,18 @@ export function AuthPage({ mode }) {
   const onSubmit = async values => {
     setNotice('');
     clearErrors();
+    if (isRegister && values.role === 'staff') {
+      setNotice('Staff accounts must be created by an administrator. Contact your administrator to request access.');
+      return;
+    }
     try {
       if (isRegister) {
         await registerAccount({
           email: values.email,
           password: values.password,
           name: values.fullName,
-          companyName: values.companyName
+          companyName: values.companyName,
+          role: values.role
         });
       } else {
         await login({
@@ -414,6 +420,26 @@ export function AuthPage({ mode }) {
           <form id="auth-form-panel" className="auth-form" onSubmit={handleSubmit(onSubmit)} noValidate>
             {isRegister && (
               <>
+                <fieldset className="auth-role-select">
+                  <legend className="auth-field__label">Create account as</legend>
+                  <div className="auth-role-select__options">
+                    <label className={`auth-role-option ${accountRole === 'customer' ? 'is-selected' : ''}`}>
+                      <input type="radio" value="customer" {...register('role')} />
+                      <span className="auth-role-option__title"><UserRound size={15} aria-hidden="true" /> Customer</span>
+                      <span className="auth-role-option__description">Manage your subscriptions and invoices.</span>
+                    </label>
+                    <label className={`auth-role-option ${accountRole === 'staff' ? 'is-selected' : ''}`}>
+                      <input type="radio" value="staff" {...register('role')} />
+                      <span className="auth-role-option__title"><UsersRound size={15} aria-hidden="true" /> Staff</span>
+                      <span className="auth-role-option__description">For members of a Brightloop workspace.</span>
+                    </label>
+                  </div>
+                </fieldset>
+                {accountRole === 'staff' && (
+                  <p className="auth-role-notice" role="status">
+                    Staff accounts must be created by an administrator. Contact your administrator to request access.
+                  </p>
+                )}
                 <AuthField
                   id="full-name"
                   label="Full name"

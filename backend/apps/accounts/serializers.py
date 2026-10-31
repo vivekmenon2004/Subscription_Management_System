@@ -23,6 +23,13 @@ class RegisterSerializer(serializers.Serializer):
     name = serializers.CharField(trim_whitespace=True)
     company_name = serializers.CharField(required=False, allow_blank=True)
     phone = serializers.CharField(required=False, allow_blank=True)
+    role = serializers.ChoiceField(
+        choices=[
+            (User.Role.CUSTOMER, 'Customer'),
+            (User.Role.STAFF, 'Staff'),
+        ],
+        default=User.Role.CUSTOMER,
+    )
 
     def validate_email(self, value):
         normalized = value.strip().lower()
@@ -37,14 +44,22 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError(error.messages) from error
         return value
 
+    def validate_role(self, value):
+        if value == User.Role.STAFF:
+            raise serializers.ValidationError(
+                'Staff accounts must be created by an administrator.'
+            )
+        return value
+
     def create(self, validated_data):
         company = validated_data.pop('company_name', '')
         phone = validated_data.pop('phone', '')
+        role = validated_data.pop('role')
         user = User.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],
             name=validated_data['name'],
-            role=User.Role.CUSTOMER
+            role=role
         )
         CustomerProfile.objects.create(
             user=user,

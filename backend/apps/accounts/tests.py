@@ -85,6 +85,16 @@ class JwtAuthenticationTests(APITestCase):
             'An account with this email already exists.',
         )
 
+    def test_registration_rejects_staff_without_administrator_provisioning(self):
+        response = self.register(role=User.Role.STAFF)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data['role'][0],
+            'Staff accounts must be created by an administrator.',
+        )
+        self.assertFalse(User.objects.exists())
+
     def test_login_returns_tokens_and_me_requires_valid_access_token(self):
         self.register()
         login = self.client.post(
