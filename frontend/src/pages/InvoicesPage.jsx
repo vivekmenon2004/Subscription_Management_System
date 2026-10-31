@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, FileText, CheckCircle2, Eye, CreditCard, XCircle, Printer } from 'lucide-react';
+import { Play, CheckCircle2, Eye, CreditCard, XCircle } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
 import { SearchField } from '../components/SearchField';

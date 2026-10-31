@@ -1,4 +1,7 @@
 from rest_framework import serializers
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, CustomerProfile, validate_password_complexity
 
 class CustomerProfileSerializer(serializers.ModelSerializer):
@@ -16,8 +19,8 @@ class UserSerializer(serializers.ModelSerializer):
 
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
-    name = serializers.CharField()
+    password = serializers.CharField(write_only=True, trim_whitespace=False)
+    name = serializers.CharField(trim_whitespace=True)
     company_name = serializers.CharField(required=False, allow_blank=True)
     phone = serializers.CharField(required=False, allow_blank=True)
 
@@ -28,7 +31,10 @@ class RegisterSerializer(serializers.Serializer):
         return normalized
 
     def validate_password(self, value):
-        validate_password_complexity(value)
+        try:
+            validate_password_complexity(value)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(error.messages) from error
         return value
 
     def create(self, validated_data):
@@ -47,6 +53,15 @@ class RegisterSerializer(serializers.Serializer):
         )
         return user
 
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField(write_only=True)
+
+    def validate_refresh(self, value):
+        try:
+            return RefreshToken(value)
+        except TokenError as error:
+            raise serializers.ValidationError('Invalid or expired refresh token.') from error
+
 class CreateStaffSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -59,7 +74,10 @@ class CreateStaffSerializer(serializers.Serializer):
         return normalized
 
     def validate_password(self, value):
-        validate_password_complexity(value)
+        try:
+            validate_password_complexity(value)
+        except DjangoValidationError as error:
+            raise serializers.ValidationError(error.messages) from error
         return value
 
     def create(self, validated_data):

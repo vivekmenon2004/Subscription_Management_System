@@ -2,8 +2,8 @@ import React from 'react';
 import { Layers, ShieldCheck, UserCheck, User, LogOut } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
-export function Navbar({ activeTab, setActiveTab, onLogout }) {
-  const { currentUser, activeRole, switchRole } = useData();
+export function Navbar({ setActiveTab, onLogout }) {
+  const { currentUser, activeRole, isDemo, switchRole } = useData();
 
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-[#E8E6EB] px-4 lg:px-8 py-3">
@@ -22,9 +22,12 @@ export function Navbar({ activeTab, setActiveTab, onLogout }) {
         {/* Role Switcher & User info */}
         <div className="flex items-center gap-3">
           {/* Quick role selector */}
-          <div className="flex items-center bg-[#F3F2F5] p-1 rounded-xl border border-[#E8E6EB]">
+          {isDemo && <div className="flex items-center bg-[#F3F2F5] p-1 rounded-xl border border-[#E8E6EB]">
             <button
-              onClick={() => switchRole('admin')}
+              onClick={() => {
+                switchRole('admin');
+                setActiveTab('dashboard');
+              }}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${activeRole === 'admin' ? 'bg-[#714B67] text-white shadow-sm' : 'text-[#6E6B75] hover:text-[#25232A]'}`}
             >
               <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
@@ -52,7 +55,7 @@ export function Navbar({ activeTab, setActiveTab, onLogout }) {
               <User className="w-3.5 h-3.5" aria-hidden="true" />
               Customer Portal
             </button>
-          </div>
+          </div>}
 
           {/* User profile avatar */}
           <div className="flex items-center gap-2 pl-2 border-l border-[#E8E6EB]">

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Plus, Pause, Play, RefreshCw, XCircle, CheckCircle, FileText, Calendar, Check, Info } from 'lucide-react';
+import { Plus, Pause, Play, RefreshCw, XCircle, Calendar } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { Button, IconButton } from '../components/Button';
+import { Button } from '../components/Button';
 import { SearchField } from '../components/SearchField';
 import { StatusBadge } from '../components/StatusBadge';
 

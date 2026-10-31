@@ -5,10 +5,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthPage } from './AuthPage';
 import { getPasswordRuleResults, registerSchema } from './authValidation';
 
-const { switchRole } = vi.hoisted(() => ({ switchRole: vi.fn() }));
+const authActions = vi.hoisted(() => ({
+  login: vi.fn(),
+  registerAccount: vi.fn(),
+  startDemo: vi.fn()
+}));
 
 vi.mock('../context/DataContext', () => ({
-  useData: () => ({ switchRole })
+  useData: () => ({ ...authActions, isAuthenticated: false })
 }));
 
 function AuthRouteHarness() {
@@ -45,7 +49,9 @@ function validRegistration(overrides = {}) {
 
 describe('Brightloop auth page', () => {
   beforeEach(() => {
-    switchRole.mockClear();
+    vi.clearAllMocks();
+    authActions.login.mockResolvedValue({ role: 'customer' });
+    authActions.registerAccount.mockResolvedValue({ role: 'customer' });
   });
 
   it('uses the same password rules for the live checklist and signup schema', () => {
@@ -91,6 +97,10 @@ describe('Brightloop auth page', () => {
   });
 
   it('shows an inline duplicate email error for an existing demo account', async () => {
+    authActions.registerAccount.mockRejectedValueOnce({
+      message: 'An account with this email already exists.',
+      data: { email: ['An account with this email already exists.'] }
+    });
     renderAuth('/register');
     fireEvent.change(screen.getByLabelText('Full name'), { target: { value: 'Alex Morgan' } });
     fireEvent.change(screen.getByLabelText('Work email'), { target: { value: 'admin@brightloop.io' } });
@@ -101,13 +111,51 @@ describe('Brightloop auth page', () => {
 
     expect(await screen.findByText('An account with this email already exists.')).toBeInTheDocument();
     expect(screen.getByLabelText('Work email')).toHaveAttribute('aria-invalid', 'true');
+    expect(authActions.registerAccount).toHaveBeenCalledWith({
+      email: 'admin@brightloop.io',
+      password: 'Abcdefgh1!',
+      name: 'Alex Morgan',
+      companyName: ''
+    });
   });
 
   it('starts the selected seeded demo role from a role chip', () => {
     renderAuth('/login');
     fireEvent.click(screen.getByRole('button', { name: /Staff: Work with customers/ }));
 
-    expect(switchRole).toHaveBeenCalledWith('staff');
+    expect(authActions.startDemo).toHaveBeenCalledWith('staff');
     expect(screen.getByTestId('current-path')).toHaveTextContent('/app');
+  });
+
+  it('submits sign-in credentials and enters the authenticated app', async () => {
+    renderAuth('/login');
+    fireEvent.change(screen.getByLabelText('Work email'), { target: { value: 'alex@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Password123!' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in to Brightloop' }));
+
+    await waitFor(() => expect(authActions.login).toHaveBeenCalledWith({
+      email: 'alex@example.com',
+      password: 'Password123!',
+      rememberMe: false
+    }));
+    await waitFor(() => expect(screen.getByTestId('current-path')).toHaveTextContent('/app'));
+  });
+
+  it('registers new account details with the backend auth action', async () => {
+    renderAuth('/register');
+    fireEvent.change(screen.getByLabelText('Full name'), { target: { value: 'Alex Morgan' } });
+    fireEvent.change(screen.getByLabelText('Work email'), { target: { value: 'alex@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Abcdefgh1!' } });
+    fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'Abcdefgh1!' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: /Terms of Service/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create your account' }));
+
+    await waitFor(() => expect(authActions.registerAccount).toHaveBeenCalledWith({
+      email: 'alex@example.com',
+      password: 'Abcdefgh1!',
+      name: 'Alex Morgan',
+      companyName: ''
+    }));
+    await waitFor(() => expect(screen.getByTestId('current-path')).toHaveTextContent('/app'));
   });
 });

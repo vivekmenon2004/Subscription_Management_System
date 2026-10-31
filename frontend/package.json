@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "lint": "eslint src/pages/AuthPage.jsx src/pages/AuthPage.test.jsx src/pages/authValidation.js"
+    "lint": "eslint src"
   },
   "dependencies": {
     "@hookform/resolvers": "^6.0.2",

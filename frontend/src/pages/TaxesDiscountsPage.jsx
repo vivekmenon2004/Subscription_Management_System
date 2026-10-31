@@ -167,7 +167,6 @@ export function TaxesDiscountsPage() {
 
           <div className="space-y-3">
             {discounts.map(disc => {
-              const usedPercent = disc.usage_limit ? Math.round((disc.times_used / disc.usage_limit) * 100) : 0;
               return (
                 <div key={disc.id} className="p-3.5 bg-[#FAF9FB] rounded-xl border border-[#E8E6EB] space-y-2 text-xs">
                   <div className="flex justify-between items-start">

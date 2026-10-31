@@ -1,11 +1,21 @@
-from rest_framework import generics, permissions, status, viewsets
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework import generics, permissions, serializers, status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.serializers import (
+    TokenObtainPairSerializer,
+)
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import User, CustomerProfile, validate_password_complexity
-from .serializers import UserSerializer, RegisterSerializer, CreateStaffSerializer
+from .serializers import (
+    CreateStaffSerializer,
+    LogoutSerializer,
+    RegisterSerializer,
+    UserSerializer,
+)
 from .permissions import IsAdmin, IsStaffOrAdmin
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -22,6 +32,35 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = RegisterSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        refresh = RefreshToken.for_user(user)
+        return Response({
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': UserSerializer(user).data,
+        }, status=status.HTTP_201_CREATED)
+
+class LogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        refresh = serializer.validated_data['refresh']
+        if str(refresh.get('user_id')) != str(request.user.pk):
+            return Response(
+                {'detail': 'The refresh token does not belong to this user.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        try:
+            refresh.blacklist()
+        except TokenError as error:
+            return Response({'detail': str(error)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_205_RESET_CONTENT)
+
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -34,7 +73,10 @@ class MeView(APIView):
         if 'name' in data:
             user.name = data['name']
         if 'password' in data and data['password']:
-            validate_password_complexity(data['password'])
+            try:
+                validate_password_complexity(data['password'])
+            except DjangoValidationError as error:
+                raise serializers.ValidationError({'password': error.messages}) from error
             user.set_password(data['password'])
         user.save()
 
@@ -46,34 +88,6 @@ class MeView(APIView):
         profile.save()
 
         return Response(UserSerializer(user).data)
-
-class ForgotPasswordView(APIView):
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        # AUTH-4: The response is identical whether or not the email exists, to prevent account discovery
-        email = request.data.get('email', '').strip().lower()
-        # In actual email setup, send single-use 60-minute token
-        return Response({
-            "message": "If this email is registered, a password reset link has been emailed.",
-            "demo_reset_token": "demo-reset-token-60m" if email else None
-        }, status=status.HTTP_200_OK)
-
-class ResetPasswordView(APIView):
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        email = request.data.get('email', '').strip().lower()
-        new_password = request.data.get('password', '')
-        try:
-            validate_password_complexity(new_password)
-            user = User.objects.filter(email=email).first()
-            if user:
-                user.set_password(new_password)
-                user.save()
-            return Response({"message": "Password reset successfully. You can now log in."})
-        except Exception as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class StaffViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdmin]

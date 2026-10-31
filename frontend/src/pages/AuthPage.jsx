@@ -36,7 +36,6 @@ const DEMO_ROLES = [
   { id: 'staff', label: 'Staff', description: 'Work with customers, invoices and payments.', icon: UsersRound },
   { id: 'customer', label: 'Customer', description: 'See your subscriptions and invoices.', icon: UserRound }
 ];
-const EXISTING_DEMO_EMAILS = ['admin@brightloop.io', 'staff@brightloop.io', 'customer@acmecorp.com'];
 
 function Brand({ inverse = false }) {
   return (
@@ -245,7 +244,7 @@ function TabLink({ to, selected, children, onKeyDown, linkRef }) {
 export function AuthPage({ mode }) {
   const isRegister = mode === 'register';
   const navigate = useNavigate();
-  const { switchRole } = useData();
+  const { login, registerAccount, startDemo: startDemoRole, isAuthenticated } = useData();
   const tabRefs = useRef([]);
   const pendingTabFocus = useRef(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -276,6 +275,10 @@ export function AuthPage({ mode }) {
     pendingTabFocus.current = false;
   }, [isRegister]);
 
+  useEffect(() => {
+    if (isAuthenticated) navigate('/app', { replace: true });
+  }, [isAuthenticated, navigate]);
+
   const handlePointerMove = event => {
     if (event.pointerType !== 'mouse' || window.matchMedia?.('(max-width: 900px)').matches) return;
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
@@ -287,22 +290,49 @@ export function AuthPage({ mode }) {
   };
 
   const startDemo = role => {
-    // TODO: Replace this seeded-role switch with the authenticated role shell when auth is available.
-    switchRole(role);
+    startDemoRole(role);
     navigate('/app');
   };
 
   const onSubmit = async values => {
     setNotice('');
-    clearErrors('email');
-
-    if (isRegister && EXISTING_DEMO_EMAILS.includes(values.email.trim().toLowerCase())) {
-      setError('email', { type: 'duplicate', message: 'An account with this email already exists.' });
-      return;
+    clearErrors();
+    try {
+      if (isRegister) {
+        await registerAccount({
+          email: values.email,
+          password: values.password,
+          name: values.fullName,
+          companyName: values.companyName
+        });
+      } else {
+        await login({
+          email: values.email,
+          password: values.password,
+          rememberMe: values.rememberMe
+        });
+      }
+      navigate('/app', { replace: true });
+    } catch (error) {
+      const fieldNames = {
+        email: 'email',
+        password: 'password',
+        name: 'fullName',
+        company_name: 'companyName'
+      };
+      let mappedFieldError = false;
+      Object.entries(fieldNames).forEach(([apiField, formField]) => {
+        const messages = error.data?.[apiField];
+        if (messages) {
+          setError(formField, {
+            type: 'server',
+            message: Array.isArray(messages) ? messages[0] : String(messages)
+          });
+          mappedFieldError = true;
+        }
+      });
+      if (!mappedFieldError) setNotice(error.message || 'Unable to authenticate. Please try again.');
     }
-
-    await new Promise(resolve => window.setTimeout(resolve, 450));
-    setNotice('Authentication is not connected in this preview. Your details were not sent or saved. Choose a demo role to continue.');
   };
 
   const handleTabKeyDown = (event, selectedIndex) => {
@@ -480,7 +510,7 @@ export function AuthPage({ mode }) {
             ) : (
               <div className="auth-form__options">
                 <label className="auth-remember"><input type="checkbox" {...register('rememberMe')} /> <span>Remember me</span></label>
-                <button type="button" className="auth-text-button" onClick={() => setNotice('Password reset is not available in this preview. No account service is connected yet.')}>Forgot password?</button>
+                <button type="button" className="auth-text-button" onClick={() => setNotice('Password reset is not configured yet. Contact your administrator.')}>Forgot password?</button>
               </div>
             )}
 
@@ -507,7 +537,7 @@ export function AuthPage({ mode }) {
           {!import.meta.env.PROD && (
             <p className="auth-preview-note">
               <ShieldCheck size={13} aria-hidden="true" />
-              Preview mode — form details are never sent or saved.
+              Account access is connected. Sample workspace data is illustrative.
             </p>
           )}
           <p className="auth-legal">© 2026 Brightloop <span>•</span> Subscription management, made considered.</p>
