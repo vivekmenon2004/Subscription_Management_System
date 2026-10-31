@@ -33,7 +33,18 @@ export function PaymentsPage() {
     <div className="space-y-6 pb-20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#25232A]">Payment Transactions</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-[#25232A]">Payment Transactions</h2>
+            {activeRole === 'admin' ? (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FDF2F8] text-[#714B67] border border-[#FBCFE8]">
+                Admin: Void & Reversal Authorized (PAY-6)
+              </span>
+            ) : (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-[#4B5563] border border-gray-200">
+                Staff: Record Only · Voiding Restricted to Admin
+              </span>
+            )}
+          </div>
           <p className="text-xs text-[#6E6B75] mt-0.5">Matched invoice payments, multi-method collections, and audit logs.</p>
         </div>
       </div>

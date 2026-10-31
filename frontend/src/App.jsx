@@ -15,6 +15,7 @@ import { PaymentsPage } from './pages/PaymentsPage';
 import { CatalogPage } from './pages/CatalogPage';
 import { QuotationsPage } from './pages/QuotationsPage';
 import { TaxesDiscountsPage } from './pages/TaxesDiscountsPage';
+import { StaffManagementPage } from './pages/StaffManagementPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { CustomerPortalPage } from './pages/CustomerPortalPage';
 
@@ -84,6 +85,10 @@ function MainApp() {
 
         {activeTab === 'taxes_discounts' && (
           <TaxesDiscountsPage />
+        )}
+
+        {activeTab === 'staff' && (
+          <StaffManagementPage setActiveTab={setActiveTab} />
         )}
 
         {activeTab === 'reports' && (

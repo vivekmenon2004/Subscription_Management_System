@@ -40,6 +40,45 @@ class AccountsValidationTests(TestCase):
         self.assertTrue(user.is_staff)
         self.assertTrue(user.check_password('Password123!'))
 
+    def test_staff_creation_permissions(self):
+        # PRD Acceptance Criteria:
+        # Given a logged-in staff user, when they call the create-staff endpoint, then they get 403; an admin succeeds.
+        from rest_framework.test import APIClient
+        client = APIClient()
+
+        staff_user = User.objects.create_user(
+            email='staff_member@brightloop.io',
+            name='Staff Member',
+            password='Password123!',
+            role=User.Role.STAFF
+        )
+        admin_user = User.objects.create_user(
+            email='admin_owner@brightloop.io',
+            name='Admin Owner',
+            password='Password123!',
+            role=User.Role.ADMIN
+        )
+
+        # 1. Staff user calling /api/v1/staff -> 403
+        client.force_authenticate(user=staff_user)
+        res = client.post('/api/v1/staff', {
+            'name': 'New Staff',
+            'email': 'new_staff@brightloop.io',
+            'password': 'Password123!'
+        })
+        self.assertEqual(res.status_code, 403)
+
+        # 2. Admin user calling /api/v1/staff -> 201
+        client.force_authenticate(user=admin_user)
+        res = client.post('/api/v1/staff', {
+            'name': 'New Staff',
+            'email': 'new_staff@brightloop.io',
+            'password': 'Password123!'
+        })
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.data['email'], 'new_staff@brightloop.io')
+        self.assertEqual(res.data['role'], 'staff')
+
 
 class JwtAuthenticationTests(APITestCase):
     def setUp(self):
@@ -191,3 +230,4 @@ class JwtAuthenticationTests(APITestCase):
         self.assertIn('password', response.data)
         user = User.objects.get(email=self.credentials['email'])
         self.assertTrue(user.check_password(self.credentials['password']))
+

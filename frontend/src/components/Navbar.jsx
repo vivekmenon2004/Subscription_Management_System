@@ -36,7 +36,9 @@ export function Navbar({ setActiveTab, onLogout }) {
             <button
               onClick={() => {
                 switchRole('staff');
-                setActiveTab('dashboard');
+                if (activeTab === 'staff') {
+                  setActiveTab('dashboard');
+                }
               }}
               className={`flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg transition-colors ${activeRole === 'staff' ? 'bg-[#714B67] text-white shadow-sm' : 'text-[#6E6B75] hover:text-[#25232A]'}`}
             >

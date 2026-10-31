@@ -1,18 +1,31 @@
 import React from 'react';
-import { Home, Repeat, FileText, CreditCard, Package, Tags, BarChart3, User, FileSignature } from 'lucide-react';
+import { Home, Repeat, FileText, CreditCard, Package, Tags, BarChart3, User, FileSignature, Users } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
 export function PillNav({ activeTab, setActiveTab }) {
   const { activeRole } = useData();
 
-  const adminStaffTabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
+  const adminTabs = [
+    { id: 'dashboard', label: 'Finance Cockpit', icon: Home },
     { id: 'subscriptions', label: 'Subscriptions', icon: Repeat },
     { id: 'invoices', label: 'Invoices', icon: FileText },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'catalog', label: 'Catalog & Plans', icon: Package },
     { id: 'quotations', label: 'Quotations', icon: FileSignature },
     { id: 'taxes_discounts', label: 'Taxes & Discounts', icon: Tags },
+    { id: 'staff', label: 'Staff Management (Admin Only)', icon: Users },
+    { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'portal', label: 'Customer Portal', icon: User },
+  ];
+
+  const staffTabs = [
+    { id: 'dashboard', label: 'Staff Dashboard', icon: Home },
+    { id: 'subscriptions', label: 'Subscriptions', icon: Repeat },
+    { id: 'invoices', label: 'Invoices', icon: FileText },
+    { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'catalog', label: 'Catalog (Read Only)', icon: Package },
+    { id: 'quotations', label: 'Quotations (Use Only)', icon: FileSignature },
+    { id: 'taxes_discounts', label: 'Taxes & Discounts (Read Only)', icon: Tags },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'portal', label: 'Customer Portal', icon: User },
   ];
@@ -22,7 +35,7 @@ export function PillNav({ activeTab, setActiveTab }) {
     { id: 'dashboard', label: 'Finance View', icon: Home },
   ];
 
-  const tabs = activeRole === 'customer' ? customerTabs : adminStaffTabs;
+  const tabs = activeRole === 'admin' ? adminTabs : (activeRole === 'staff' ? staffTabs : customerTabs);
 
   return (
     <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">

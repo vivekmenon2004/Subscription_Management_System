@@ -98,7 +98,7 @@ class InvoiceViewSet(viewsets.ReadOnlyModelViewSet):
             }
         })
 
-    @action(detail=False, methods=['post'], url_path='run-billing-job')
+    @action(detail=False, methods=['post'], url_path='run-billing-job', permission_classes=[IsAdmin])
     def run_billing_job(self, request):
         generated = generate_due_invoices()
         return Response({

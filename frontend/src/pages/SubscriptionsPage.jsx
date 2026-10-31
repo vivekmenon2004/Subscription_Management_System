@@ -12,7 +12,9 @@ export function SubscriptionsPage({ onOpenNewSub }) {
     activateSubscription, 
     togglePauseSubscription, 
     renewSubscription, 
-    closeSubscription
+    closeSubscription,
+    runDailyBillingJob,
+    activeRole
   } = useData();
 
   const [search, setSearch] = useState('');
@@ -57,11 +59,13 @@ export function SubscriptionsPage({ onOpenNewSub }) {
           <h2 className="text-xl font-bold text-[#25232A]">Subscriptions</h2>
           <p className="text-xs text-[#6E6B75] mt-0.5">Manage full customer subscription lifecycles, quotes, and billing terms.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="primary" size="md" icon={Plus} onClick={onOpenNewSub}>
-            New Subscription
-          </Button>
-        </div>
+        {activeRole !== 'customer' && (
+          <div className="flex items-center gap-2">
+            <Button variant="primary" size="md" icon={Plus} onClick={onOpenNewSub}>
+              New Subscription
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filter and Search Bar */}

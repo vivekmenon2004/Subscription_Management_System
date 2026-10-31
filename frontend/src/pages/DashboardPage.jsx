@@ -7,8 +7,8 @@ import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
 import { ProgressBar } from '../components/ProgressBar';
 
-export function DashboardPage({ setActiveTab, onRecordPayment, onOpenNewSub }) {
-  const { subscriptions, invoices, payments, runDailyBillingJob } = useData();
+export function DashboardPage({ setActiveTab, onOpenInvoice, onRecordPayment, onOpenNewSub }) {
+  const { subscriptions, invoices, payments, runDailyBillingJob, activeRole } = useData();
   const [jobNotice, setJobNotice] = useState('');
 
   // 1. KPI Calculations (PRD REP-1)
@@ -42,41 +42,61 @@ export function DashboardPage({ setActiveTab, onRecordPayment, onOpenNewSub }) {
   const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + Number(inv.outstanding_balance), 0);
 
   const handleRunBilling = () => {
+    if (activeRole !== 'admin') return;
     const count = runDailyBillingJob();
-    setJobNotice(`Success! Daily billing job executed. Generated ${count} invoice(s).`);
+    setJobNotice(`Success! Daily billing job executed by Admin. Generated ${count} invoice(s).`);
     setTimeout(() => setJobNotice(''), 5000);
   };
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Top Banner & Quick Action */}
+      {/* Top Banner & Role Scoped Actions */}
       <div className="bg-gradient-to-r from-[#714B67] to-[#8C4673] rounded-2xl p-6 text-white shadow-elevated flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 text-xs font-medium backdrop-blur-sm mb-2">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            Billing Engine Ready
+            {activeRole === 'admin' 
+              ? 'Admin Finance Cockpit · Full Engine Control' 
+              : 'Staff Operations Workspace · Day-to-Day Lifecycle'}
           </div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight">Brightloop Finance Cockpit</h2>
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight">
+            {activeRole === 'admin' ? 'Brightloop Finance Cockpit' : 'Operations & Sales Workspace'}
+          </h2>
           <p className="text-white/80 text-xs md:text-sm mt-1 max-w-xl">
-            Live subscription metrics, automated recurring billing run, and cash collection tracking.
+            {activeRole === 'admin'
+              ? 'Live subscription metrics, administrative billing engine trigger, and revenue auditing.'
+              : 'Day-to-day customer subscription management, quotations, and invoice generation.'}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={handleRunBilling}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#714B67] font-semibold text-xs hover:bg-[#FAF6F9] active:scale-95 transition-all shadow-sm"
-          >
-            <Play className="w-4 h-4 fill-[#714B67]" aria-hidden="true" />
-            Run Daily Billing Job
-          </button>
-          <button
-            onClick={onOpenNewSub}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-medium text-xs backdrop-blur-sm transition-all"
-          >
-            <Repeat className="w-4 h-4" aria-hidden="true" />
-            New Subscription
-          </button>
+          {activeRole === 'admin' ? (
+            <button
+              onClick={handleRunBilling}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-[#714B67] font-semibold text-xs hover:bg-[#FAF6F9] active:scale-95 transition-all shadow-sm"
+              title="Admin trigger for the scheduled billing engine"
+            >
+              <Play className="w-4 h-4 fill-[#714B67]" aria-hidden="true" />
+              Run Daily Billing Job
+            </button>
+          ) : (
+            <div 
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 text-white/90 text-xs font-medium backdrop-blur-sm border border-white/10"
+              title="Per PRD Section 4.6, scheduled daily billing runs automatically in Celery. Manual batch execution is restricted to Admin."
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+              <span>Billing Run: Auto (Celery)</span>
+            </div>
+          )}
+          {activeRole !== 'customer' && (
+            <button
+              onClick={onOpenNewSub}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-medium text-xs backdrop-blur-sm transition-all shadow-sm"
+            >
+              <Repeat className="w-4 h-4" aria-hidden="true" />
+              New Subscription
+            </button>
+          )}
         </div>
       </div>
 

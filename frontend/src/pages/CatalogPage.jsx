@@ -82,10 +82,22 @@ export function CatalogPage() {
     <div className="space-y-6 pb-20">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#25232A]">Catalog & Recurring Plans</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-[#25232A]">Catalog & Recurring Plans</h2>
+            {activeRole === 'staff' && (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                Staff: Read Only
+              </span>
+            )}
+            {activeRole === 'admin' && (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FDF2F8] text-[#714B67] border border-[#FBCFE8]">
+                Admin: Full CRUD
+              </span>
+            )}
+          </div>
           <p className="text-xs text-[#6E6B75] mt-0.5">Software offerings, variants, margins, and recurring subscription plans.</p>
         </div>
-        {activeRole === 'admin' && (
+        {activeRole === 'admin' ? (
           <div className="flex items-center gap-2">
             {activeTab === 'products' ? (
               <Button variant="primary" size="md" icon={Plus} onClick={() => setShowAddProduct(true)}>
@@ -97,8 +109,21 @@ export function CatalogPage() {
               </Button>
             )}
           </div>
+        ) : (
+          <div className="text-right text-xs text-[#6E6B75]">
+            <span className="italic">Catalog creation is restricted to Admin (PRD 2.1)</span>
+          </div>
         )}
       </div>
+
+      {activeRole === 'staff' && (
+        <div className="p-3 bg-[#FAF9FB] border border-[#E8E6EB] rounded-xl flex items-center justify-between text-xs text-[#6E6B75]">
+          <span className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <strong>Staff Read-Only View:</strong> Per PRD Section 2.1, sales staff can view product specifications, variants, and profit margins, while catalog modifications are reserved for Admins.
+          </span>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-[#E8E6EB]">

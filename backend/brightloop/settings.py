@@ -14,11 +14,11 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR.parent / '.env')
 
-DEBUG = os.getenv('DJANGO_DEBUG', 'False').lower() == 'true'
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() == 'true'
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 if not SECRET_KEY and DEBUG:
-    SECRET_KEY = secrets.token_urlsafe(50)
-if not SECRET_KEY:
+    SECRET_KEY = 'django-insecure-dev-key-change-in-production-1234567890'
+elif not SECRET_KEY:
     raise ImproperlyConfigured('Set DJANGO_SECRET_KEY in the environment or .env file.')
 
 ALLOWED_HOSTS = [

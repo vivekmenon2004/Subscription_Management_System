@@ -327,6 +327,41 @@ const INITIAL_PAYMENTS = [
   }
 ];
 
+export const INITIAL_CUSTOMERS = [
+  {
+    id: 3,
+    name: 'Rahul Sharma',
+    email: 'customer@acmecorp.com',
+    company_name: 'Acme Corp Pvt Ltd',
+    phone: '+91 98765 43210',
+    billing_address: '42 Brigade Road, Bangalore 560001',
+    tax_id: 'GSTIN29AAACA9876Q1Z0'
+  },
+  {
+    id: 4,
+    name: 'David Miller',
+    email: 'david@nexustech.io',
+    company_name: 'NexusTech Global Inc',
+    phone: '+91 98111 22334',
+    billing_address: '15 Electronic City, Bangalore 560100',
+    tax_id: 'GSTIN29BBBCA1234P1Z2'
+  },
+  {
+    id: 5,
+    name: 'Ananya Roy',
+    email: 'ananya@quantumscale.in',
+    company_name: 'QuantumScale Technologies',
+    phone: '+91 97444 55667',
+    billing_address: '88 Cyber Gateway, Hyderabad 500081',
+    tax_id: 'GSTIN36CCCCB4567M1Z4'
+  }
+];
+
+const INITIAL_STAFF = [
+  { id: 1, name: 'Admin User', email: 'admin@brightloop.io', role: 'admin', is_active: true, created_at: '2026-10-01' },
+  { id: 2, name: 'Sarah Jenkins', email: 'staff@brightloop.io', role: 'staff', is_active: true, created_at: '2026-10-15' }
+];
+
 export function DataProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [activeRole, setActiveRole] = useState(null);
@@ -334,6 +369,8 @@ export function DataProvider({ children }) {
   const [isDemo, setIsDemo] = useState(false);
   const [authReady, setAuthReady] = useState(() => !getAccessToken());
 
+  const [customers, setCustomers] = useState(INITIAL_CUSTOMERS);
+  const [staffMembers, setStaffMembers] = useState(INITIAL_STAFF);
   const [subscriptions, setSubscriptions] = useState(INITIAL_SUBSCRIPTIONS);
   const [invoices, setInvoices] = useState(INITIAL_INVOICES);
   const [payments, setPayments] = useState(INITIAL_PAYMENTS);
@@ -472,14 +509,46 @@ export function DataProvider({ children }) {
     } : s));
   };
 
+  const addCustomer = (customerData) => {
+    const id = customers.length + 3;
+    const newCust = {
+      id,
+      name: customerData.name,
+      email: customerData.email.toLowerCase(),
+      company_name: customerData.company_name || customerData.name,
+      phone: customerData.phone || '',
+      billing_address: customerData.billing_address || '',
+      tax_id: customerData.tax_id || ''
+    };
+    setCustomers(prev => [...prev, newCust]);
+    return newCust;
+  };
+
   const addSubscription = (newSub) => {
+    // PRD Section 2.1: Admin and Staff create subscriptions; Customers cannot.
+    if (activeRole === 'customer') {
+      throw new Error("Customers cannot create new subscriptions (PRD Section 2.1)");
+    }
     const id = subscriptions.length + 1;
     const number = `SUB-${String(id).padStart(6, '0')}`;
+    const selectedCust = customers.find(c => c.id === Number(newSub.customer)) || customers[0];
     const subToAdd = {
       ...newSub,
       id,
       number,
-      customer_details: PRESET_USERS.customer,
+      customer: selectedCust.id,
+      customer_details: {
+        id: selectedCust.id,
+        name: selectedCust.name,
+        email: selectedCust.email,
+        company_name: selectedCust.company_name,
+        customer_profile: {
+          company_name: selectedCust.company_name,
+          phone: selectedCust.phone,
+          billing_address: selectedCust.billing_address,
+          tax_id: selectedCust.tax_id
+        }
+      },
       plan_details: plans.find(p => p.id === Number(newSub.plan)) || plans[0],
       created_at: new Date().toISOString()
     };
@@ -497,6 +566,11 @@ export function DataProvider({ children }) {
   };
 
   const runDailyBillingJob = () => {
+    // PRD Section 2.1 & 4.6: Admin triggers system billing job
+    if (activeRole !== 'admin') {
+      console.warn("Unauthorized: Run Daily Billing Job is restricted to Admin.");
+      return 0;
+    }
     // Generate invoice for all Active subscriptions whose next_billing_date is today or earlier
     const today = new Date().toISOString().split('T')[0];
     const generated = [];
@@ -592,6 +666,11 @@ export function DataProvider({ children }) {
   };
 
   const voidPayment = (paymentId) => {
+    // PAY-6: Only the admin can void a payment, which reopens the invoice balance and is audit-logged
+    if (activeRole !== 'admin') {
+      console.warn("Unauthorized: Only Admin can void payments (PRD PAY-6)");
+      return;
+    }
     const p = payments.find(x => x.id === paymentId);
     if (!p || p.is_void) return;
 
@@ -611,8 +690,37 @@ export function DataProvider({ children }) {
     }));
   };
 
-  // Catalog Actions
+  // Staff Management (PRD AUTH-5: Only an Admin can manage staff members)
+  const addStaffMember = (staffData) => {
+    if (activeRole !== 'admin') {
+      throw new Error("Only an Admin can create staff accounts (PRD AUTH-5)");
+    }
+    const id = staffMembers.length + 1;
+    const newStaff = {
+      id,
+      name: staffData.name,
+      email: staffData.email.toLowerCase(),
+      role: staffData.role || 'staff',
+      is_active: true,
+      created_at: new Date().toISOString().split('T')[0]
+    };
+    setStaffMembers([newStaff, ...staffMembers]);
+    return newStaff;
+  };
+
+  const toggleStaffStatus = (id) => {
+    if (activeRole !== 'admin') {
+      throw new Error("Only an Admin can modify staff status (PRD 2.1)");
+    }
+    setStaffMembers(prev => prev.map(s => s.id === id ? { ...s, is_active: !s.is_active } : s));
+  };
+
+  // Catalog Actions (PRD 2.1: Products/Plans/Taxes/Discounts are Admin-only)
   const addProduct = (prod) => {
+    if (activeRole !== 'admin') {
+      console.warn("Unauthorized: Only Admin can create products (PRD 2.1)");
+      return;
+    }
     const id = products.length + 1;
     const margin = (Number(prod.sales_price) - Number(prod.cost_price || 0)).toFixed(2);
     const newP = {
@@ -627,13 +735,59 @@ export function DataProvider({ children }) {
   };
 
   const addPlan = (plan) => {
+    if (activeRole !== 'admin') {
+      console.warn("Unauthorized: Only Admin can create plans (PRD 2.1)");
+      return;
+    }
     const id = plans.length + 1;
     setPlans([{ ...plan, id, is_active: true }, ...plans]);
   };
 
   const addQuotationTemplate = (tpl) => {
+    if (activeRole !== 'admin') {
+      console.warn("Unauthorized: Only Admin can create quotation templates (PRD 2.1 & TPL-1)");
+      return;
+    }
     const id = templates.length + 1;
     setTemplates([{ ...tpl, id, is_active: true }, ...templates]);
+  };
+
+  const addTax = (taxData) => {
+    if (activeRole !== 'admin') {
+      throw new Error("Only an Admin can configure taxes (PRD 4.7)");
+    }
+    const id = taxes.length + 1;
+    const newTax = {
+      id,
+      name: taxData.name,
+      rate: Number(taxData.rate).toFixed(2),
+      is_inclusive: Boolean(taxData.is_inclusive),
+      is_active: true
+    };
+    setTaxes([...taxes, newTax]);
+    return newTax;
+  };
+
+  const addDiscount = (discData) => {
+    if (activeRole !== 'admin') {
+      throw new Error("Only an Admin can create discount rules (PRD 4.8)");
+    }
+    const id = discounts.length + 1;
+    const newDisc = {
+      id,
+      name: discData.name,
+      type: discData.type || 'percentage',
+      value: Number(discData.value).toFixed(2),
+      min_purchase: discData.min_purchase || '0.00',
+      min_quantity: discData.min_quantity || 1,
+      usage_limit: discData.usage_limit ? Number(discData.usage_limit) : null,
+      times_used: 0,
+      scope: discData.scope || 'all',
+      start_date: discData.start_date || new Date().toISOString().split('T')[0],
+      end_date: discData.end_date || null
+    };
+    setDiscounts([newDisc, ...discounts]);
+    return newDisc;
   };
 
   const createQuotationFromTemplate = (templateId) => {
@@ -769,6 +923,8 @@ export function DataProvider({ children }) {
       signOut,
       startDemo,
       switchRole,
+      customers,
+      addCustomer,
       subscriptions,
       invoices,
       payments,
@@ -777,6 +933,11 @@ export function DataProvider({ children }) {
       templates,
       taxes,
       discounts,
+      staffMembers,
+      addStaffMember,
+      toggleStaffStatus,
+      addTax,
+      addDiscount,
       confirmSubscription,
       activateSubscription,
       togglePauseSubscription,
