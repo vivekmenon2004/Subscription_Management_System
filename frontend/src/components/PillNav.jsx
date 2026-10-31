@@ -18,7 +18,8 @@ export function PillNav({ activeTab, setActiveTab }) {
   ];
 
   const customerTabs = [
-    { id: 'portal', label: 'Customer Portal', icon: User },
+    { id: 'portal', label: 'My Portal', icon: User },
+    { id: 'dashboard', label: 'Finance View', icon: Home },
   ];
 
   const tabs = activeRole === 'customer' ? customerTabs : adminStaffTabs;
