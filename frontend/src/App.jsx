@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { DataProvider, useData } from './context/DataContext';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
@@ -7,6 +7,7 @@ import { InvoiceModal } from './components/InvoiceModal';
 import { RecordPaymentModal } from './components/RecordPaymentModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { AuthPage } from './pages/AuthPage';
+const LandingPage = lazy(() => import('./pages/LandingPage'));
 
 import { DashboardPage } from './pages/DashboardPage';
 import { SubscriptionsPage } from './pages/SubscriptionsPage';
@@ -144,11 +145,18 @@ export default function App() {
     <DataProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route
+            path="/"
+            element={(
+              <Suspense fallback={<main className="p-8 text-center" role="status">Loading Brightloop…</main>}>
+                <LandingPage />
+              </Suspense>
+            )}
+          />
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/register" element={<AuthPage mode="register" />} />
           <Route path="/app" element={<AuthenticatedApp />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </DataProvider>
