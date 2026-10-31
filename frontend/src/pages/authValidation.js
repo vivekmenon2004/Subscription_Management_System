@@ -28,7 +28,7 @@ export const registerSchema = z.object({
   email: z.string().trim().email('Enter a valid work email address.'),
   password: passwordSchema,
   confirmPassword: z.string().min(1, 'Confirm your password.'),
-  acceptedTerms: z.literal(true, { errorMap: () => ({ message: 'Accept the terms to create an account.' }) })
+  acceptedTerms: z.literal(true, { error: 'Accept the terms to create an account.' })
 }).superRefine((values, context) => {
   if (values.password !== values.confirmPassword) {
     context.addIssue({

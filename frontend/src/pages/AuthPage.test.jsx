@@ -66,6 +66,9 @@ describe('Brightloop auth page', () => {
     const tooShortResult = registerSchema.safeParse(tooShort);
     expect(tooShortResult.success).toBe(false);
     expect(tooShortResult.error.issues.some(issue => issue.message === '9 or more characters')).toBe(true);
+    const termsNotAccepted = registerSchema.safeParse(validRegistration({ acceptedTerms: false }));
+    expect(termsNotAccepted.success).toBe(false);
+    expect(termsNotAccepted.error.issues.some(issue => issue.message === 'Accept the terms to create an account.')).toBe(true);
     expect(registerSchema.safeParse(valid).success).toBe(true);
     expect(registerSchema.safeParse(validRegistration({ password: 'Abcdefg1!', confirmPassword: 'Abcdefg1!' })).success).toBe(true);
     expect(getPasswordRuleResults('Abcdefgh1', 'Abcdefgh1').find(rule => rule.id === 'special').passed).toBe(false);
@@ -83,6 +86,16 @@ describe('Brightloop auth page', () => {
     fireEvent.change(screen.getByLabelText('Confirm password'), { target: { value: 'Abcdefgh1' } });
     expect(screen.getByRole('progressbar', { name: 'Password requirements met' })).toHaveAttribute('aria-valuenow', '4');
     expect(screen.getByLabelText('Passwords match: met')).toBeInTheDocument();
+  });
+
+  it('keeps the terms checkbox visible and labels its validation error clearly', async () => {
+    renderAuth('/register');
+    const termsCheckbox = screen.getByRole('checkbox', { name: /Terms of Service/ });
+
+    expect(termsCheckbox).toHaveStyle({ opacity: '1', position: 'static' });
+    fireEvent.click(screen.getByRole('button', { name: 'Create your account' }));
+
+    expect(await screen.findByText('Accept the terms to create an account.')).toBeInTheDocument();
   });
 
   it('switches auth tabs with arrow keys and keeps the selected tab focused', async () => {
@@ -121,12 +134,13 @@ describe('Brightloop auth page', () => {
     });
   });
 
-  it('starts the selected seeded demo role from a role chip', () => {
+  it('does not expose demo role shortcuts on the sign-in page', () => {
     renderAuth('/login');
-    fireEvent.click(screen.getByRole('button', { name: /Staff: Work with customers/ }));
 
-    expect(authActions.startDemo).toHaveBeenCalledWith('staff');
-    expect(screen.getByTestId('current-path')).toHaveTextContent('/app');
+    expect(screen.queryByRole('button', { name: /Admin: Manage the whole billing workspace/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Staff: Work with customers/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Customer: See your subscriptions/ })).not.toBeInTheDocument();
+    expect(authActions.startDemo).not.toHaveBeenCalled();
   });
 
   it('submits sign-in credentials and enters the authenticated app', async () => {

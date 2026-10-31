@@ -943,11 +943,14 @@
 }
 
 .auth-page-v2 .auth-terms input {
+  position: static;
   width: 16px;
   height: 16px;
   flex: none;
   margin: 1px 0 0;
+  opacity: 1;
   accent-color: var(--color-primary);
+  cursor: pointer;
 }
 
 .auth-page-v2 .auth-terms__box {

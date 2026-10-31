@@ -3,7 +3,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm, useWatch } from 'react-hook-form';
 import {
-  ArrowDownRight,
   ArrowRight,
   Building2,
   Check,
@@ -30,11 +29,6 @@ const BILLING_STATUSES = [
   { label: 'Draft', className: 'is-draft' },
   { label: 'Confirmed', className: 'is-confirmed' },
   { label: 'Paid', className: 'is-paid' }
-];
-const DEMO_ROLES = [
-  { id: 'admin', label: 'Admin', description: 'Manage the whole billing workspace.', icon: ShieldCheck },
-  { id: 'staff', label: 'Staff', description: 'Work with customers, invoices and payments.', icon: UsersRound },
-  { id: 'customer', label: 'Customer', description: 'See your subscriptions and invoices.', icon: UserRound }
 ];
 
 function Brand({ inverse = false }) {
@@ -244,7 +238,7 @@ function TabLink({ to, selected, children, onKeyDown, linkRef }) {
 export function AuthPage({ mode }) {
   const isRegister = mode === 'register';
   const navigate = useNavigate();
-  const { login, registerAccount, startDemo: startDemoRole, isAuthenticated } = useData();
+  const { login, registerAccount, isAuthenticated } = useData();
   const tabRefs = useRef([]);
   const pendingTabFocus = useRef(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -288,11 +282,6 @@ export function AuthPage({ mode }) {
       x: ((event.clientX - bounds.left) / bounds.width - 0.5) * 14,
       y: ((event.clientY - bounds.top) / bounds.height - 0.5) * 10
     });
-  };
-
-  const startDemo = role => {
-    startDemoRole(role);
-    navigate('/app');
   };
 
   const onSubmit = async values => {
@@ -548,17 +537,6 @@ export function AuthPage({ mode }) {
               {!isSubmitting && <ArrowRight className="auth-submit__arrow" size={17} aria-hidden="true" />}
             </button>
           </form>
-
-          <div className="auth-divider"><span>OR EXPLORE A DEMO</span></div>
-          <div className="auth-demo-roles" aria-label="Choose a demo role">
-            {DEMO_ROLES.map(({ id, label, description, icon: Icon }) => (
-              <button key={id} type="button" className="auth-demo-role" onClick={() => startDemo(id)} aria-label={`${label}: ${description}`}>
-                <span className="auth-demo-role__icon"><Icon size={16} aria-hidden="true" /></span>
-                <span className="auth-demo-role__copy"><strong>{label}</strong><small>{description}</small></span>
-                <ArrowDownRight className="auth-demo-role__arrow" size={15} aria-hidden="true" />
-              </button>
-            ))}
-          </div>
 
           {!import.meta.env.PROD && (
             <p className="auth-preview-note">
