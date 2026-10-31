@@ -374,6 +374,7 @@ export function DataProvider({ children }) {
   const [subscriptions, setSubscriptions] = useState(INITIAL_SUBSCRIPTIONS);
   const [invoices, setInvoices] = useState(INITIAL_INVOICES);
   const [payments, setPayments] = useState(INITIAL_PAYMENTS);
+  const [portalBillingError, setPortalBillingError] = useState('');
   const [products, setProducts] = useState(INITIAL_PRODUCTS);
   const [plans, setPlans] = useState(INITIAL_PLANS);
   const [templates, setTemplates] = useState(INITIAL_TEMPLATES);
@@ -398,6 +399,29 @@ export function DataProvider({ children }) {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || isDemo || currentUser?.role !== 'customer') return undefined;
+    let active = true;
+    Promise.all([
+      apiRequest('/portal/invoices'),
+      apiRequest('/portal/payments')
+    ])
+      .then(([invoiceResponse, paymentResponse]) => {
+        if (!active) return;
+        setInvoices(invoiceResponse.results || invoiceResponse);
+        setPayments(paymentResponse.results || paymentResponse);
+        setPortalBillingError('');
+      })
+      .catch(error => {
+        if (!active) return;
+        console.error('[Billing] Could not load customer invoices and payments:', error);
+        setPortalBillingError('We could not load your billing records. Refresh the page or contact support.');
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentUser?.id, currentUser?.role, isAuthenticated, isDemo]);
 
   const acceptAuthentication = (response, rememberMe) => {
     if (!response.access || !response.refresh || !response.user) {
@@ -665,6 +689,24 @@ export function DataProvider({ children }) {
     }));
   };
 
+  const createRazorpayOrder = (invoiceId) => apiRequest(
+    '/payments/razorpay/orders',
+    'POST',
+    { invoice_id: invoiceId }
+  );
+
+  const verifyRazorpayPayment = async (paymentResponse) => {
+    const result = await apiRequest('/payments/razorpay/verify', 'POST', paymentResponse);
+    setPayments(prev => [result.payment, ...prev.filter(payment => payment.id !== result.payment.id)]);
+    setInvoices(prev => (
+      prev.some(invoice => invoice.id === result.invoice.id)
+        ? prev.map(invoice => (invoice.id === result.invoice.id ? result.invoice : invoice))
+        : [result.invoice, ...prev]
+    ));
+    setPortalBillingError('');
+    return result;
+  };
+
   const voidPayment = (paymentId) => {
     // PAY-6: Only the admin can void a payment, which reopens the invoice balance and is audit-logged
     if (activeRole !== 'admin') {
@@ -928,6 +970,7 @@ export function DataProvider({ children }) {
       subscriptions,
       invoices,
       payments,
+      portalBillingError,
       products,
       plans,
       templates,
@@ -948,6 +991,8 @@ export function DataProvider({ children }) {
       cancelInvoice,
       runDailyBillingJob,
       recordPayment,
+      createRazorpayOrder,
+      verifyRazorpayPayment,
       voidPayment,
       addProduct,
       addPlan,

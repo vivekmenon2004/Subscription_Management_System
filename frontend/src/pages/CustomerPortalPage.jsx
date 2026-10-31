@@ -10,11 +10,13 @@ import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
 import { StatusBadge } from '../components/StatusBadge';
 
-export function CustomerPortalPage({ onOpenInvoice }) {
+export function CustomerPortalPage({ onOpenInvoice, onRecordPayment }) {
   const { 
     currentUser, 
     subscriptions = [], 
     invoices = [], 
+    portalBillingError,
+    isDemo,
     products = [],
     togglePauseSubscription, 
     renewSubscription, 
@@ -850,6 +852,12 @@ export function CustomerPortalPage({ onOpenInvoice }) {
             <span className="text-xs text-[#6E6B75]">{myInvoices.length} invoices found</span>
           </div>
 
+          {portalBillingError && (
+            <p className="px-4 py-3 bg-[#FEE2E2] text-[#B91C1C] text-xs" role="alert">
+              {portalBillingError}
+            </p>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#FAF9FB] text-[#6E6B75] border-b border-[#E8E6EB]">
@@ -877,6 +885,17 @@ export function CustomerPortalPage({ onOpenInvoice }) {
                       <StatusBadge status={inv.status} isOverdue={inv.is_overdue} daysOverdue={inv.days_overdue} />
                     </td>
                     <td className="py-3.5 px-4 text-right">
+                      {Number(inv.outstanding_balance) > 0 && inv.status === 'Confirmed' && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => onRecordPayment(inv)}
+                        >
+                          {currentUser?.role === 'customer' && !isDemo
+                            ? 'Pay securely'
+                            : isDemo ? 'Simulate Payment' : 'Record Payment'}
+                        </Button>
+                      )}
                       <Button variant="secondary" size="sm" icon={FileText} onClick={() => onOpenInvoice(inv)}>
                         View & PDF
                       </Button>

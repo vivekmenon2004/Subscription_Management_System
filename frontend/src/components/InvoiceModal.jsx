@@ -5,8 +5,9 @@ import { StatusBadge } from './StatusBadge';
 import { useData } from '../context/DataContext';
 
 export function InvoiceModal({ invoice, onClose, onRecordPayment }) {
-  const { confirmInvoice, cancelInvoice } = useData();
+  const { confirmInvoice, cancelInvoice, currentUser, isDemo } = useData();
   if (!invoice) return null;
+  const onlinePayment = currentUser?.role === 'customer' && !isDemo;
 
   const handlePrint = () => {
     window.print();
@@ -178,7 +179,7 @@ export function InvoiceModal({ invoice, onClose, onRecordPayment }) {
                   onRecordPayment(invoice);
                 }}
               >
-                Record Payment
+                {onlinePayment ? 'Pay securely' : 'Record Payment'}
               </Button>
             )}
             <Button variant="secondary" size="sm" onClick={onClose}>

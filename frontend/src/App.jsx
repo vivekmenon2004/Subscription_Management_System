@@ -100,6 +100,7 @@ function MainApp() {
         {activeTab === 'portal' && (
           <CustomerPortalPage
             onOpenInvoice={handleOpenInvoice}
+            onRecordPayment={handleRecordPayment}
           />
         )}
       </main>

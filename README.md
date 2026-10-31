@@ -49,6 +49,12 @@ Copy-Item .env.example .env
 
 Replace `DJANGO_SECRET_KEY` with a fresh random value (for example, generate one with `python -c "import secrets; print(secrets.token_urlsafe(50))"`). Never use a development key in production. Then:
 
+Configure Razorpay on the backend in `.env` using `RAZORPAY_KEY_ID` and
+`RAZORPAY_KEY_SECRET`. Use keys from Razorpay's Test Mode for test payments;
+they do not charge real money. Live payments require a verified Razorpay
+account and live keys. Keep the key secret server-side, never add it to the
+frontend or commit it to Git.
+
 ```bash
 cd backend
 python -m venv .venv
@@ -97,6 +103,7 @@ npm run build
 - Quotations, taxes, and discounts: explore configured examples.
 - Reports: review summary and reporting views.
 - Customer portal: explore the customer-facing subscription and billing experience.
+- Customer invoice checkout: confirmed invoices can be paid through Razorpay Checkout. The backend scopes orders to the signed-in customer, verifies the Razorpay signature and provider-side payment details, captures authorized payments, and records the payment against the invoice.
 - Authentication: account registration and email/password sign-in return JWT access and refresh tokens. Access tokens are refreshed automatically; refresh tokens rotate and are blacklisted at logout. “Remember me” stores tokens persistently; otherwise they last for the browser session.
 - Demo role chips enter a separate seeded mock workspace and do not authenticate with the API.
 

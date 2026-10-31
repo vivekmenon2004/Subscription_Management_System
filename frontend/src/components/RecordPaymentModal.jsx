@@ -2,18 +2,74 @@ import React, { useState } from 'react';
 import { X, Check, CreditCard, Landmark, QrCode, Banknote } from 'lucide-react';
 import { Button } from './Button';
 import { useData } from '../context/DataContext';
+import { loadRazorpayCheckout } from '../services/razorpay';
 
 export function RecordPaymentModal({ invoice, onClose }) {
-  const { recordPayment } = useData();
+  const {
+    recordPayment,
+    createRazorpayOrder,
+    verifyRazorpayPayment,
+    currentUser,
+    isDemo
+  } = useData();
   const [method, setMethod] = useState('upi');
   const [amount, setAmount] = useState(invoice ? invoice.outstanding_balance : '0.00');
   const [note, setNote] = useState('');
   const [error, setError] = useState('');
+  const [processing, setProcessing] = useState(false);
+  const onlinePayment = currentUser?.role === 'customer' && !isDemo;
 
   if (!invoice) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (onlinePayment) {
+      setProcessing(true);
+      setError('');
+      try {
+        const order = await createRazorpayOrder(invoice.id);
+        const RazorpayCheckout = await loadRazorpayCheckout();
+        const checkout = new RazorpayCheckout({
+          key: order.key_id,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'Brightloop Software',
+          description: `Invoice ${order.invoice_number}`,
+          order_id: order.order_id,
+          prefill: order.customer,
+          notes: { invoice_number: order.invoice_number },
+          theme: { color: '#714B67' },
+          handler: async response => {
+            setProcessing(true);
+            try {
+              await verifyRazorpayPayment(response);
+              onClose();
+            } catch (verificationError) {
+              setError(
+                `We could not confirm this payment with the server: ${verificationError.message}. ` +
+                'Do not retry yet if your bank shows a charge.'
+              );
+            } finally {
+              setProcessing(false);
+            }
+          },
+          modal: {
+            ondismiss: () => setProcessing(false)
+          }
+        });
+        checkout.on('payment.failed', response => {
+          setError(response.error?.description || 'Razorpay could not complete this payment.');
+          setProcessing(false);
+        });
+        checkout.open();
+        setProcessing(false);
+      } catch (checkoutError) {
+        setError(checkoutError.message || 'Unable to start Razorpay checkout.');
+        setProcessing(false);
+      }
+      return;
+    }
+
     const numAmt = Number(amount);
     if (isNaN(numAmt) || numAmt <= 0) {
       setError('Payment amount must be greater than zero.');
@@ -46,21 +102,35 @@ export function RecordPaymentModal({ invoice, onClose }) {
       <div className="bg-white w-full max-w-md rounded-2xl shadow-elevated border border-[#E8E6EB] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#E8E6EB] bg-[#FAF9FB]">
           <div>
-            <h2 className="text-base font-semibold text-[#25232A]">Record Payment</h2>
+            <h2 className="text-base font-semibold text-[#25232A]">
+              {onlinePayment ? 'Pay Invoice' : 'Record Payment'}
+            </h2>
             <p className="text-xs text-[#6E6B75] mt-0.5">Invoice {invoice.number} (Balance: ₹{invoice.outstanding_balance})</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-[#6E6B75] hover:bg-[#EAE8ED]">
+          <button onClick={onClose} disabled={processing} className="p-1.5 rounded-lg text-[#6E6B75] hover:bg-[#EAE8ED] disabled:opacity-50">
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm">
           {error && (
-            <div className="p-3 bg-[#FEE2E2] text-[#DC2626] rounded-xl text-xs font-medium">
+            <div className="p-3 bg-[#FEE2E2] text-[#DC2626] rounded-xl text-xs font-medium" role="alert">
               {error}
             </div>
           )}
 
+          {onlinePayment ? (
+            <div className="space-y-3">
+              <p className="text-sm text-[#4B4852]">
+                Pay the full outstanding balance securely with Razorpay. Available methods depend on your location and bank.
+              </p>
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-[#F7F6F8] border border-[#E8E6EB] text-xs text-[#6E6B75]">
+                <CreditCard className="w-4 h-4 text-[#714B67]" aria-hidden="true" />
+                <span>UPI, cards, and net banking</span>
+              </div>
+            </div>
+          ) : (
+            <>
           {/* Payment Method Selector */}
           <div>
             <label className="block text-xs font-medium text-[#6E6B75] mb-2">Payment Method</label>
@@ -125,13 +195,15 @@ export function RecordPaymentModal({ invoice, onClose }) {
               className="w-full px-3.5 py-2 rounded-xl border border-[#D7D4DC] focus:border-[#714B67] focus:outline-none text-xs text-[#25232A]"
             />
           </div>
+            </>
+          )}
 
           <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#E8E6EB]">
-            <Button variant="secondary" size="sm" onClick={onClose}>
+            <Button variant="secondary" size="sm" onClick={onClose} disabled={processing}>
               Cancel
             </Button>
-            <Button variant="primary" size="sm" type="submit" icon={Check}>
-              Confirm Payment
+            <Button variant="primary" size="sm" type="submit" icon={onlinePayment ? CreditCard : Check} disabled={processing}>
+              {processing ? 'Processing…' : onlinePayment ? 'Continue to Razorpay' : 'Confirm Payment'}
             </Button>
           </div>
         </form>
