@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowDown,
@@ -30,6 +30,10 @@ import {
   Zap
 } from 'lucide-react';
 import './LandingPage.css';
+
+const gsapRuntime = Promise.all([import('gsap'), import('gsap/ScrollTrigger')]);
+let scrollTriggerRegistered = false;
+const heroScrollProgress = { current: { value: 0 } };
 
 const lifecycle = ['Draft', 'Quotation', 'Confirmed', 'Active', 'Closed'];
 
@@ -151,7 +155,7 @@ function Logo({ light = false }) {
   );
 }
 
-function ThreeScene() {
+function ThreeScene({ scrollProgressRef }) {
   const mountRef = useRef(null);
 
   useEffect(() => {
@@ -161,9 +165,20 @@ function ThreeScene() {
     let renderer;
     let scene;
     let root;
-    let observer;
+    let visibilityObserver;
+    let resizeObserver;
     let frameId;
     let disposed = false;
+    let isInView = false;
+    let updateMotionPreference;
+    const motionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    let reducedMotion = motionQuery?.matches ?? false;
+
+    const stopAnimation = () => {
+      if (!frameId) return;
+      window.cancelAnimationFrame(frameId);
+      frameId = undefined;
+    };
 
     import('three').then(({
       ACESFilmicToneMapping,
@@ -254,7 +269,6 @@ function ThreeScene() {
       renderer.toneMappingExposure = 1.15;
       mount.appendChild(renderer.domElement);
 
-      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       const resize = () => {
         const { width, height } = mount.getBoundingClientRect();
         if (!width || !height) return;
@@ -265,24 +279,49 @@ function ThreeScene() {
         renderer.render(scene, camera);
       };
       const renderFrame = () => {
-        root.rotation.y += 0.0022;
+        const progress = scrollProgressRef.current.value;
+        root.rotation.y += 0.0022 * (1 + progress * 2.5);
         root.rotation.x = Math.sin(performance.now() * 0.00028) * 0.06;
+        const targetScale = 1 + progress * 0.06;
+        root.scale.setScalar(root.scale.x + (targetScale - root.scale.x) * 0.08);
         ringA.rotation.z += 0.0015;
         renderer.render(scene, camera);
-        frameId = window.requestAnimationFrame(renderFrame);
+        frameId = isInView && !reducedMotion ? window.requestAnimationFrame(renderFrame) : undefined;
       };
-      observer = new ResizeObserver(resize);
-      observer.observe(mount);
+      const startAnimation = () => {
+        if (isInView && !reducedMotion && !frameId) {
+          frameId = window.requestAnimationFrame(renderFrame);
+        }
+      };
+      updateMotionPreference = () => {
+        reducedMotion = motionQuery?.matches ?? false;
+        if (reducedMotion) stopAnimation();
+        else startAnimation();
+      };
+      motionQuery?.addEventListener('change', updateMotionPreference);
+      resizeObserver = new ResizeObserver(resize);
+      resizeObserver.observe(mount);
+      visibilityObserver = typeof IntersectionObserver === 'function'
+        ? new IntersectionObserver(([entry]) => {
+          isInView = entry.isIntersecting;
+          if (isInView) startAnimation();
+          else stopAnimation();
+        }, { rootMargin: '120px' })
+        : undefined;
+      visibilityObserver?.observe(mount);
+      isInView = !visibilityObserver;
       resize();
-      if (!reducedMotion) frameId = window.requestAnimationFrame(renderFrame);
+      startAnimation();
     }).catch(() => {
       if (!disposed) mount.dataset.webgl = 'unavailable';
     });
 
     return () => {
       disposed = true;
-      observer?.disconnect();
-      if (frameId) window.cancelAnimationFrame(frameId);
+      visibilityObserver?.disconnect();
+      resizeObserver?.disconnect();
+      if (updateMotionPreference) motionQuery?.removeEventListener('change', updateMotionPreference);
+      stopAnimation();
       root?.traverse(object => {
         if (object.geometry) object.geometry.dispose();
         if (object.material) {
@@ -293,7 +332,7 @@ function ThreeScene() {
       renderer?.dispose();
       renderer?.domElement.remove();
     };
-  }, []);
+  }, [scrollProgressRef]);
 
   return <div className="hero-orbit" ref={mountRef} aria-hidden="true" />;
 }
@@ -390,7 +429,7 @@ function Hero() {
       <div className="landing-container landing-hero__grid">
         <div className="landing-hero__copy">
           <div className="hero-kicker"><span><Zap size={14} fill="currentColor" /></span> Subscription operations, in sync</div>
-          <h1>Recurring revenue,<br />without the <span>busywork.</span></h1>
+          <h1><span><span>Recurring revenue,</span></span><span><span>without the <span>busywork.</span></span></span></h1>
           <p className="landing-hero__lead">Run plans, automated billing, and renewals without spreadsheets. One calm, connected platform for your entire subscription lifecycle.</p>
           <div className="hero-actions">
             <a className="button button--primary" href="#capabilities">Explore the platform <ArrowRight size={16} /></a>
@@ -404,7 +443,7 @@ function Hero() {
         </div>
         <div className="landing-hero__visual">
           <div className="hero-orbit-glow" />
-          <ThreeScene />
+          <ThreeScene scrollProgressRef={heroScrollProgress} />
           <div className="hero-visual-label"><span className="hero-visual-label__dot" /> ILLUSTRATIVE PRODUCT PREVIEW</div>
           <SubscriptionPreview />
           <InvoiceFloat />
@@ -524,7 +563,7 @@ function RoleAccess() {
               </div>
               <div className="workspace-chart">
                 <div className="workspace-chart__top"><span>Recurring revenue</span><span>Illustrative trend</span></div>
-                <div className="chart-bars" aria-hidden="true">{[36, 48, 42, 64, 59, 82, 72, 96, 78, 100, 88, 114, 94, 126, 112, 145, 128, 158, 141, 172, 151, 185].map((height, index) => <i key={index} style={{ height: `${height}px`, animationDelay: `${index * 24}ms` }} />)}</div>
+                <div className="chart-bars" aria-hidden="true">{[36, 48, 42, 64, 59, 82, 72, 96, 78, 100, 88, 114, 94, 126, 112, 145, 128, 158, 141, 172, 151, 185].map(height => <i key={height} style={{ height: `${height}px` }} />)}</div>
                 <div className="chart-months"><span>PERIOD START</span><span>PERIOD END</span></div>
               </div>
               <div className="workspace-activity"><span><span className="activity-icon"><FileText size={13} /></span> Invoice <strong>Status tracking</strong><i className="activity-paid">PAID</i></span><span>Invoice history</span></div>
@@ -559,7 +598,7 @@ function Pricing() {
               <div className="pricing-card__head"><span className={`pricing-icon pricing-icon--${plan.name.toLowerCase()}`}>{plan.name === 'Starter' ? <Zap size={17} /> : plan.name === 'Growth' ? <BarChart3 size={17} /> : <Gem size={17} />}</span><h3>{plan.name}</h3></div>
               <p className="pricing-card__description">{plan.description}</p>
               <div className="pricing-amount">
-                {plan.custom ? <strong>Let’s talk</strong> : <><strong>₹{formatter.format(annual ? plan.annual : plan.monthly)}</strong><span>/ month{annual ? ', billed annually' : ''}</span></>}
+                {plan.custom ? <strong>Let’s talk</strong> : <><strong aria-live="polite" data-monthly={plan.monthly} data-annual={plan.annual}>₹{formatter.format(annual ? plan.annual : plan.monthly)}</strong><span>/ month{annual ? ', billed annually' : ''}</span></>}
               </div>
               <Link className={`button ${plan.popular ? 'button--primary' : 'button--outline'}`} to={plan.custom ? '/login' : '/register'}>
                 {plan.custom ? 'Contact sales' : 'Start 14-day trial'} <ArrowRight size={15} />
@@ -605,7 +644,7 @@ function FinanceDashboard() {
                 <svg viewBox="0 0 540 150" preserveAspectRatio="none" aria-hidden="true">
                   <defs><linearGradient id="revenueFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#A64D87" stopOpacity=".24" /><stop offset="100%" stopColor="#A64D87" stopOpacity="0" /></linearGradient></defs>
                   <path d="M0,120 C35,112 45,98 85,103 S140,77 175,87 S230,66 260,73 S315,45 350,62 S410,24 438,43 S490,16 540,22 L540,150 L0,150 Z" fill="url(#revenueFill)" />
-                  <path d="M0,120 C35,112 45,98 85,103 S140,77 175,87 S230,66 260,73 S315,45 350,62 S410,24 438,43 S490,16 540,22" fill="none" stroke="#8C4F79" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+                  <path d="M0,120 C35,112 45,98 85,103 S140,77 175,87 S230,66 260,73 S315,45 350,62 S410,24 438,43 S490,16 540,22" fill="none" stroke="#8C4F79" strokeWidth="3" pathLength={1} vectorEffect="non-scaling-stroke" />
                   <circle cx="540" cy="22" r="5" fill="#714B67" stroke="#fff" strokeWidth="3" vectorEffect="non-scaling-stroke" />
                 </svg>
                 <div className="revenue-chart__months"><span>EARLIER</span><span>LATER</span></div>
@@ -628,7 +667,7 @@ function Footer() {
       <div className="landing-container">
         <div className="footer-cta">
           <div className="footer-cta__orb footer-cta__orb--one" /><div className="footer-cta__orb footer-cta__orb--two" />
-          <div className="footer-cta__copy"><span className="footer-cta__eyebrow"><Sparkles size={13} /> YOUR NEXT BILLING DAY, HANDLED</span><h2>Stop chasing renewals.<br />Put revenue on <em>autopilot.</em></h2><p>Make room for the work that moves your business forward.</p></div>
+          <div className="footer-cta__copy"><span className="footer-cta__eyebrow"><Sparkles size={13} /> YOUR NEXT BILLING DAY, HANDLED</span><h2><span><span>Stop chasing renewals.</span></span><span><span>Put revenue on <em>autopilot.</em></span></span></h2><p>Make room for the work that moves your business forward.</p></div>
           <div className="footer-cta__actions"><Link className="button button--white" to="/register">Start your free trial <ArrowRight size={15} /></Link><a className="footer-doc-link" href="#technical-stack">Technical documentation <ArrowUpRight size={14} /></a></div>
         </div>
         <div className="footer-main">
@@ -654,94 +693,389 @@ export default function LandingPage() {
     ['Finance', '#finance']
   ];
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const page = pageRef.current;
-    if (!page || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return undefined;
+    if (!page || typeof window.matchMedia !== 'function') return undefined;
 
     let disposed = false;
     let animationContext;
-    let observer;
 
-    import('gsap')
-      .then(gsapModule => {
-        if (disposed) return;
-        if (typeof IntersectionObserver !== 'function') return;
+    gsapRuntime.then(([gsapModule, scrollTriggerModule]) => {
+      if (disposed) return;
 
-        const gsap = gsapModule.gsap || gsapModule.default;
-        const revealAnimations = new Map();
-        const reveal = trigger => {
-          const animation = revealAnimations.get(trigger);
-          if (!animation || !animationContext) return;
+      const gsap = gsapModule.gsap || gsapModule.default;
+      const ScrollTrigger = scrollTriggerModule.ScrollTrigger || scrollTriggerModule.default;
+      if (!scrollTriggerRegistered) {
+        gsap.registerPlugin(ScrollTrigger);
+        scrollTriggerRegistered = true;
+      }
 
-          animationContext.add(() => {
-            gsap.fromTo(
-              animation.elements,
-              { autoAlpha: 0, y: animation.y },
-              {
-                autoAlpha: 1,
-                y: 0,
-                duration: 0.72,
-                stagger: animation.stagger,
-                ease: 'power3.out'
-              }
-            );
+      const numberFormatter = new Intl.NumberFormat('en-IN');
+      const getNumber = value => {
+        const match = value.trim().match(/^(?:₹)?([\d,]+)(?:\.(\d+))?$/);
+        return match ? Number(`${match[1].replaceAll(',', '')}${match[2] ? `.${match[2]}` : ''}`) : null;
+      };
+      const formatCurrency = value => `₹${numberFormatter.format(Math.round(value))}`;
+
+      animationContext = gsap.context(() => {
+        let mediaContext;
+        const setupSharedScroll = () => {
+          const header = page.querySelector('.landing-header');
+          const progress = page.querySelector('.landing-header__progress');
+          const nav = page.querySelector('.landing-nav');
+          const indicator = nav.querySelector('.landing-nav__indicator');
+          const navLinks = Array.from(nav.querySelectorAll('a'));
+          const navTargets = navLinks.map(link => ({
+            link,
+            target: page.querySelector(link.getAttribute('href'))
+          })).filter(item => item.target);
+          let previousActive;
+          let previousX = -1;
+          let previousWidth = -1;
+
+          gsap.set(progress, { scaleX: 0, transformOrigin: 'left center' });
+          gsap.fromTo(progress, { scaleX: 0 }, {
+            scaleX: 1,
+            ease: 'none',
+            scrollTrigger: { trigger: page, start: 'top top', end: 'bottom bottom', scrub: true }
           });
-          revealAnimations.delete(trigger);
-          observer.unobserve(trigger);
-        };
+          gsap.set(indicator, { x: 0, scaleX: 0, opacity: 0, transformOrigin: 'left center' });
 
-        animationContext = gsap.context(() => {
-          const addReveal = (elements, trigger, { y = 28, stagger = 0.12 } = {}) => {
-            if (!elements.length) return;
+          const updateScrollspy = () => {
+            const marker = window.scrollY + header.offsetHeight + 20;
+            const active = navTargets.reduce((current, item) => {
+              const targetTop = item.target.getBoundingClientRect().top + window.scrollY;
+              return targetTop <= marker && (!current || targetTop > current.top)
+                ? { link: item.link, top: targetTop }
+                : current;
+            }, null);
 
-            revealAnimations.set(trigger, { elements, y, stagger });
+            if (active?.link !== previousActive) {
+              navLinks.forEach(link => {
+                if (active?.link === link) link.setAttribute('aria-current', 'location');
+                else link.removeAttribute('aria-current');
+              });
+              previousActive = active?.link;
+            }
+            const activeX = active?.link.offsetLeft ?? -1;
+            const activeWidth = active?.link.offsetWidth ?? 0;
+            if (active && nav.offsetWidth && activeWidth && (activeX !== previousX || activeWidth !== previousWidth)) {
+              previousX = activeX;
+              previousWidth = activeWidth;
+              gsap.to(indicator, {
+                x: activeX,
+                scaleX: activeWidth,
+                opacity: 1,
+                duration: 0.24,
+                ease: 'power2.out',
+                overwrite: true
+              });
+            } else if (!active && previousWidth !== 0) {
+              previousX = -1;
+              previousWidth = 0;
+              gsap.to(indicator, { scaleX: 0, opacity: 0, duration: 0.18, overwrite: true });
+            }
           };
 
+          ScrollTrigger.create({
+            trigger: page,
+            start: 40,
+            end: 'bottom bottom',
+            onUpdate: () => header.classList.toggle('is-scrolled', window.scrollY >= 40),
+            onRefresh: () => header.classList.toggle('is-scrolled', window.scrollY >= 40)
+          });
+          ScrollTrigger.create({
+            trigger: page,
+            start: 'top top',
+            end: 'bottom bottom',
+            onUpdate: updateScrollspy,
+            onRefresh: updateScrollspy
+          });
+          updateScrollspy();
+
+          const handleInteraction = event => {
+            const target = event.target;
+            const pricingButton = target.closest?.('.pricing-switch button');
+            if (pricingButton && pricingButton.getAttribute('aria-pressed') !== 'true') {
+              const annual = pricingButton.textContent.trim() === 'Annual';
+              const amountNodes = Array.from(page.querySelectorAll('.pricing-amount strong[data-monthly]'));
+              const startingValues = amountNodes.map(node => getNumber(node.textContent));
+              window.requestAnimationFrame(() => {
+                if (disposed) return;
+                amountNodes.forEach((node, index) => {
+                  const destination = Number(node.dataset[annual ? 'annual' : 'monthly']);
+                  const counter = { value: startingValues[index] ?? destination };
+                  gsap.killTweensOf(node);
+                  gsap.to(counter, {
+                    value: destination,
+                    duration: 0.5,
+                    ease: 'power1.out',
+                    onUpdate: () => { node.textContent = formatCurrency(counter.value); },
+                    onComplete: () => { node.textContent = formatCurrency(destination); }
+                  });
+                });
+              });
+            }
+
+            if (target.closest?.('.role-tabs [role="tab"]')) {
+              window.requestAnimationFrame(() => {
+                if (disposed) return;
+                const panel = page.querySelector('.role-panel');
+                gsap.fromTo(Array.from(panel.children), { opacity: 0, y: 8 }, {
+                  opacity: 1,
+                  y: 0,
+                  duration: 0.25,
+                  stagger: 0.025,
+                  ease: 'power2.out',
+                  overwrite: true
+                });
+              });
+            }
+          };
+          page.addEventListener('click', handleInteraction);
+          return () => page.removeEventListener('click', handleInteraction);
+        };
+
+        const reveal = (elements, trigger, { y = 24, stagger = 0.1, duration = 0.65 } = {}) => {
+          if (!elements.length || !trigger) return;
+          gsap.set(elements, { opacity: 0, y });
+          gsap.to(elements, {
+            opacity: 1,
+            y: 0,
+            duration,
+            stagger,
+            ease: 'power3.out',
+            scrollTrigger: { trigger, start: 'top 86%', once: true }
+          });
+        };
+
+        const setupSimpleReveals = () => {
+          const cleanupSharedScroll = setupSharedScroll();
           page.querySelectorAll('.section-heading').forEach(heading => {
-            addReveal([heading], heading.closest('.section') || heading, { y: 24, stagger: 0 });
+            reveal([heading], heading.closest('.section'), { y: 16, stagger: 0, duration: 0.48 });
           });
+          reveal(Array.from(page.querySelectorAll('.shift-card')), page.querySelector('.shift-grid'), { y: 18, stagger: 0.08, duration: 0.5 });
+          reveal(Array.from(page.querySelectorAll('.capability-card')), page.querySelector('.capability-grid'), { y: 18, stagger: 0.07, duration: 0.5 });
+          reveal([page.querySelector('.roles-copy'), page.querySelector('.role-visual')], page.querySelector('.roles-layout'), { y: 18, stagger: 0.08, duration: 0.5 });
+          reveal(Array.from(page.querySelectorAll('.pricing-card')), page.querySelector('.pricing-grid'), { y: 18, stagger: 0.08, duration: 0.5 });
+          reveal([page.querySelector('.finance-copy'), page.querySelector('.finance-dashboard')], page.querySelector('.finance-layout'), { y: 18, stagger: 0.08, duration: 0.5 });
+          reveal([page.querySelector('.footer-cta')], page.querySelector('.footer-cta'), { y: 16, stagger: 0, duration: 0.5 });
+          reveal(Array.from(page.querySelectorAll('.footer-column')), page.querySelector('.footer-main'), { y: 14, stagger: 0.06, duration: 0.5 });
 
-          [
-            ['.shift-card', '.shift-grid'],
-            ['.capability-card', '.capability-grid'],
-            ['.role-panel, .role-visual', '.roles-layout'],
-            ['.pricing-card', '.pricing-grid'],
-            ['.finance-copy, .finance-dashboard', '.finance-layout'],
-            ['.footer-cta', '.footer-cta'],
-            ['.footer-column', '.footer-main']
-          ].forEach(([targets, trigger]) => {
-            const container = page.querySelector(trigger);
-            if (!container) return;
-            const elements = container.matches(targets)
-              ? [container]
-              : Array.from(container.querySelectorAll(targets));
-            addReveal(elements, container);
-          });
-
-          observer = new IntersectionObserver(entries => {
-            entries.forEach(entry => {
-              if (!entry.isIntersecting) return;
-              reveal(entry.target);
+          const bars = Array.from(page.querySelectorAll('.chart-bars i'));
+          if (bars.length) {
+            gsap.set(bars, { scaleY: 0, transformOrigin: 'center bottom' });
+            gsap.to(bars, {
+              scaleY: 1,
+              duration: 0.42,
+              stagger: 0.018,
+              ease: 'power2.out',
+              scrollTrigger: { trigger: bars[0].closest('.workspace-chart'), start: 'top 86%', once: true }
             });
-          }, {
-            rootMargin: '0px 0px -10% 0px',
-            threshold: 0
+          }
+          return cleanupSharedScroll;
+        };
+
+        const setupFullMotion = () => {
+          const cleanupSharedScroll = setupSharedScroll();
+          page.querySelectorAll('.section-heading').forEach(heading => {
+            reveal([heading], heading.closest('.section'), { y: 24, stagger: 0 });
           });
 
-          revealAnimations.forEach((animation, trigger) => observer.observe(trigger));
-        }, page);
+          const hero = page.querySelector('.landing-hero');
+          const heroLines = Array.from(page.querySelectorAll('.landing-hero__copy h1 > span > span'));
+          const heroCopy = Array.from(page.querySelectorAll('.landing-hero__lead, .hero-actions, .hero-proof, .hero-trust'));
+          gsap.set(heroLines, { y: 48, opacity: 0 });
+          gsap.set(heroCopy, { y: 14, opacity: 0 });
+          const heroIntro = gsap.timeline({ defaults: { ease: 'power3.out' } });
+          heroIntro.to(heroLines, { y: 0, opacity: 1, duration: 0.72, stagger: 0.13 })
+            .to(heroCopy, { y: 0, opacity: 1, duration: 0.48, stagger: 0.09 }, '-=0.25');
 
-        revealAnimations.forEach((animation, trigger) => {
-          if (trigger.getBoundingClientRect().top < window.innerHeight * 0.92) reveal(trigger);
+          const heroParallax = [
+            [page.querySelector('.hero-orbit'), -40],
+            [page.querySelector('.hero-product'), -70],
+            [page.querySelector('.invoice-float'), -110],
+            [page.querySelector('.finance-float'), -90]
+          ].filter(([element]) => element);
+          heroParallax.forEach(([element, y]) => {
+            gsap.to(element, { y, ease: 'none', scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: true } });
+          });
+          gsap.to(page.querySelector('.hero-scroll'), {
+            opacity: 0,
+            y: 12,
+            scrollTrigger: { trigger: hero, start: 'top top', end: '35% top', scrub: true }
+          });
+          gsap.set(heroScrollProgress.current, { value: 0 });
+          gsap.to(heroScrollProgress.current, {
+            value: 1,
+            ease: 'none',
+            scrollTrigger: { trigger: hero, start: 'top top', end: 'bottom top', scrub: true }
+          });
+
+          const shiftGrid = page.querySelector('.shift-grid');
+          const oldCard = page.querySelector('.shift-card--old');
+          const newCard = page.querySelector('.shift-card--new');
+          if (shiftGrid && oldCard && newCard) {
+            const oldItems = Array.from(oldCard.querySelectorAll('li'));
+            const newItems = Array.from(newCard.querySelectorAll('li'));
+            const oldMarks = Array.from(oldCard.querySelectorAll('.cross-mark'));
+            const newMarks = Array.from(newCard.querySelectorAll('.check-mark'));
+            const stressBars = Array.from(oldCard.querySelectorAll('.shift-stress i'));
+            gsap.set(oldCard, { x: -26, opacity: 0 });
+            gsap.set(newCard, { x: 26, opacity: 0 });
+            gsap.set([...oldItems, ...newItems], { y: 12, opacity: 0 });
+            gsap.set([...oldMarks, ...newMarks], { scale: 0.55, opacity: 0, transformOrigin: 'center' });
+            gsap.set(stressBars, { scaleY: 1, transformOrigin: 'center bottom' });
+            const shiftTimeline = gsap.timeline({ scrollTrigger: { trigger: shiftGrid, start: 'top 78%', once: true } });
+            shiftTimeline.to(oldCard, { x: 0, opacity: 1, duration: 0.58, ease: 'power3.out' })
+              .to(newCard, { x: 0, opacity: 1, duration: 0.58, ease: 'power3.out' }, '<0.12')
+              .to(oldItems, { y: 0, opacity: 1, duration: 0.38, stagger: 0.08, ease: 'power2.out' }, '-=0.18')
+              .to(oldMarks, { scale: 1, opacity: 1, duration: 0.24, stagger: 0.08, ease: 'back.out(2)' }, '<0.08')
+              .to(stressBars, { scaleY: () => gsap.utils.random(0.45, 1.8), duration: 0.16, stagger: 0.018, repeat: 1, yoyo: true, ease: 'power1.inOut' }, '<')
+              .to(newItems, { y: 0, opacity: 1, duration: 0.38, stagger: 0.08, ease: 'power2.out' }, '<0.12')
+              .to(newMarks, { scale: 1, opacity: 1, duration: 0.28, stagger: 0.08, ease: 'back.out(2)' }, '<0.08')
+              .to(stressBars, { scaleY: 1, duration: 0.24, stagger: 0.012, ease: 'power2.out' });
+          }
+
+          const capabilityCards = Array.from(page.querySelectorAll('.capability-card'));
+          if (capabilityCards.length) {
+            gsap.set(capabilityCards, { y: 28, rotation: 2, opacity: 0, transformOrigin: 'center bottom' });
+            const capabilityTimeline = gsap.timeline({ scrollTrigger: { trigger: page.querySelector('.capability-grid'), start: 'top 82%', once: true } });
+            capabilityTimeline.to(capabilityCards, { y: 0, rotation: 0, opacity: 1, duration: 0.62, stagger: 0.12, ease: 'power3.out' });
+            capabilityTimeline.call(() => {
+              capabilityCards.forEach(card => {
+                const value = card.querySelector('.capability-visual strong');
+                const target = value && getNumber(value.textContent);
+                if (!value) return;
+                if (target === null) {
+                  gsap.fromTo(value, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'power2.out' });
+                  return;
+                }
+                const decimals = (value.textContent.match(/\.(\d+)/) || [])[1]?.length || 0;
+                const prefix = value.textContent.trim().startsWith('₹') ? '₹' : '';
+                const formatter = new Intl.NumberFormat('en-IN', {
+                  minimumFractionDigits: decimals,
+                  maximumFractionDigits: decimals
+                });
+                const counter = { value: 0 };
+                gsap.set(value, { opacity: 1 });
+                gsap.to(counter, {
+                  value: target,
+                  duration: 0.75,
+                  ease: 'power2.out',
+                  onUpdate: () => {
+                    value.textContent = `${prefix}${formatter.format(Number(counter.value.toFixed(decimals)))}`;
+                  },
+                  onComplete: () => {
+                    value.textContent = `${prefix}${formatter.format(target)}`;
+                  }
+                });
+              });
+            });
+          }
+
+          const rolesLayout = page.querySelector('.roles-layout');
+          const rolesCopy = page.querySelector('.roles-copy');
+          const roleVisual = page.querySelector('.role-visual');
+          reveal([rolesCopy, roleVisual].filter(Boolean), rolesLayout, { y: 24, stagger: 0.1 });
+          const workspace = page.querySelector('.workspace-window');
+          if (workspace) {
+            gsap.fromTo(workspace, { transformPerspective: 1100, rotateY: -9, rotateX: 1 }, {
+              rotateY: -3,
+              rotateX: 1,
+              ease: 'none',
+              scrollTrigger: { trigger: rolesLayout, start: 'top bottom', end: 'bottom top', scrub: true }
+            });
+          }
+          const bars = Array.from(page.querySelectorAll('.chart-bars i'));
+          if (bars.length) {
+            gsap.set(bars, { scaleY: 0, transformOrigin: 'center bottom' });
+            gsap.to(bars, {
+              scaleY: 1,
+              duration: 0.5,
+              stagger: 0.022,
+              ease: 'power2.out',
+              scrollTrigger: { trigger: bars[0].closest('.workspace-chart'), start: 'top 82%', once: true }
+            });
+          }
+
+          const pricingCards = Array.from(page.querySelectorAll('.pricing-card'));
+          if (pricingCards.length) {
+            const popular = page.querySelector('.pricing-card--popular');
+            gsap.set(pricingCards, { y: 28, opacity: 0 });
+            if (popular) gsap.set(popular, { scale: 0.96, transformOrigin: 'center' });
+            const pricingTimeline = gsap.timeline({ scrollTrigger: { trigger: page.querySelector('.pricing-grid'), start: 'top 82%', once: true } });
+            pricingTimeline.to(pricingCards, { y: 0, opacity: 1, duration: 0.58, stagger: 0.12, ease: 'power3.out' });
+            if (popular) {
+              pricingTimeline.to(popular, { scale: 1.025, duration: 0.16, ease: 'power1.out' })
+                .to(popular, { scale: 1, duration: 0.22, ease: 'power2.out' });
+            }
+          }
+
+          const financeLayout = page.querySelector('.finance-layout');
+          reveal([page.querySelector('.finance-copy'), page.querySelector('.finance-dashboard')].filter(Boolean), financeLayout, { y: 24, stagger: 0.12 });
+          const kpis = Array.from(page.querySelectorAll('.dashboard-kpi'));
+          if (kpis.length) reveal(kpis, page.querySelector('.dashboard-kpi-grid'), { y: 12, stagger: 0.06, duration: 0.45 });
+          const revenueSvg = page.querySelector('.revenue-chart__plot svg');
+          if (revenueSvg) {
+            const area = revenueSvg.querySelector('path:first-of-type');
+            const line = revenueSvg.querySelector('path:nth-of-type(2)');
+            const endCircle = revenueSvg.querySelector('circle');
+            gsap.set(area, { opacity: 0 });
+            gsap.set(line, { strokeDasharray: 1, strokeDashoffset: 1 });
+            gsap.set(endCircle, { scale: 0, opacity: 0, transformOrigin: 'center' });
+            const chartTimeline = gsap.timeline({ scrollTrigger: { trigger: revenueSvg, start: 'top 84%', once: true } });
+            chartTimeline.to(line, { strokeDashoffset: 0, duration: 1.05, ease: 'power2.out' })
+              .to(area, { opacity: 1, duration: 0.45, ease: 'power1.out' }, '-=0.28')
+              .to(endCircle, { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(2)' }, '-=0.12');
+          }
+          const overdueRows = Array.from(page.querySelectorAll('.overdue-row:not(.overdue-row--labels)'));
+          if (overdueRows.length) reveal(overdueRows, page.querySelector('.overdue-table'), { y: 0, stagger: 0.1, duration: 0.42 });
+
+          const footerCta = page.querySelector('.footer-cta');
+          const footerHeadline = Array.from(page.querySelectorAll('.footer-cta__copy h2 > span > span'));
+          gsap.set(footerHeadline, { y: 34, opacity: 0 });
+          gsap.to(footerHeadline, {
+            y: 0,
+            opacity: 1,
+            duration: 0.7,
+            stagger: 0.13,
+            ease: 'power3.out',
+            scrollTrigger: { trigger: footerCta, start: 'top 82%', once: true }
+          });
+          page.querySelectorAll('.footer-cta__orb').forEach((orb, index) => {
+            gsap.to(orb, {
+              y: index === 0 ? -70 : 55,
+              ease: 'none',
+              scrollTrigger: { trigger: footerCta, start: 'top bottom', end: 'bottom top', scrub: true }
+            });
+          });
+          reveal(Array.from(page.querySelectorAll('.footer-column')), page.querySelector('.footer-main'), { y: 18, stagger: 0.08 });
+          return cleanupSharedScroll;
+        };
+
+        mediaContext = gsap.matchMedia();
+        mediaContext.add('(prefers-reduced-motion: reduce)', () => {
+          heroScrollProgress.current.value = 0;
         });
-      })
-      .catch(error => {
-        if (!disposed) console.error('Unable to initialize landing page scroll animations.', error);
-      });
+        mediaContext.add('(max-width: 767px) and (prefers-reduced-motion: no-preference)', setupSimpleReveals);
+        mediaContext.add('(min-width: 768px) and (prefers-reduced-motion: no-preference)', setupFullMotion);
+        return () => mediaContext.revert();
+      }, page);
+
+      Promise.resolve(document.fonts?.ready)
+        .then(() => {
+          if (!disposed) ScrollTrigger.refresh();
+        })
+        .catch(error => {
+          if (!disposed) console.error('Unable to refresh landing page animations after fonts loaded.', error);
+        });
+    }).catch(error => {
+      if (!disposed) console.error('Unable to initialize landing page scroll animations.', error);
+    });
 
     return () => {
       disposed = true;
-      observer?.disconnect();
       animationContext?.revert();
     };
   }, []);
@@ -756,9 +1090,11 @@ export default function LandingPage() {
           </button>
           <nav className={`landing-nav${menuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
             {navItems.map(([label, href]) => <a key={href} href={href} onClick={() => setMenuOpen(false)}>{label}</a>)}
+            <span className="landing-nav__indicator" aria-hidden="true" />
           </nav>
           <div className="landing-header__actions"><Link className="landing-signin" to="/login">Sign in</Link><Link className="button button--primary button--nav" to="/register">Start free trial <ArrowRight size={14} /></Link></div>
         </div>
+        <div className="landing-header__progress" aria-hidden="true" />
       </header>
       <Hero />
       <div className="trusted-strip"><div className="landing-container trusted-strip__inner"><span>MADE FOR THE DETAILS THAT MATTER</span><div><span><ShieldCheck size={15} /> Scoped access</span><i /><span><BadgeCheck size={15} /> Audit-ready</span><i /><span><Clock3 size={15} /> Sub-2s reporting</span><i /><span><Code2 size={15} /> API-connected</span></div></div></div>
