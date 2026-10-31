@@ -1,122 +1,99 @@
 # Brightloop Subscription Platform
 
-A modern, full-lifecycle Subscription Management and Recurring Invoicing platform built with **React 18 + Vite** and **Python Django 5 + Django REST Framework**, adhering strictly to the **Product Requirements Document (PRD)** and the **`Design.jpeg` Design System**.
+Brightloop is a subscription management and recurring invoicing platform built with React and Django REST Framework. It follows the product requirements documented in the PRD and the visual direction in `Design.jpeg`.
 
----
+## Project status
 
-## 🎨 Design System Implementation (`Design.jpeg` & `ui-skills`)
-- **Color Palette**:
-  - Primary (`#714B67`): Key action buttons, active navigation, headers.
-  - Secondary (`#A64D87`): Accents, progress bars, highlights, quotations.
-  - Tertiary / Dark (`#25232A`): Inverted buttons, dark text, dark progress elements.
-  - Neutral (`#F7F6F8`): Card surfaces and background canvas.
-- **Typography**: Inter (Google Fonts) with `tabular-nums` for precise financial figures.
-- **Components**:
-  - **Floating Navigation Pill**: Rounded pill with filled circular active state.
-  - **4 Button Styles**: Primary (`#714B67`), Secondary (`#EAE8ED`), Inverted (`#25232A`), Outlined (`#D7D4DC`).
-  - **Search Field**: Neutral fill with leading magnifier icon.
-  - **Status Badges**: Draft (grey), Quotation/Confirmed (purple/amber), Active/Paid (green), Overdue (red with overdue days counter).
-  - **Progress Bars**: Usage limits and billing cycle indicators.
+- The React frontend includes dashboard, subscription, invoice, payment, catalog, reports, and customer portal experiences.
+- The Django backend provides API modules for accounts, catalog, plans, quotations, subscriptions, billing, payments, reports, and the customer portal.
+- The `/login` and `/register` frontend pages are currently a preview experience. Their credentials are not sent to or stored by the backend; demo role selection opens the frontend workspace.
+- The frontend and backend can be run separately. The frontend is not yet wired to authenticate against the Django API.
 
----
+## Design system
 
-## 📂 Project Structure
+- Primary: `#714B67`; secondary: `#A64D87`; tertiary: `#25232A`; neutral: `#F7F6F8`.
+- Inter typography, with tabular figures for financial values.
+- Rounded cards, soft shadows, status badges, progress indicators, and a floating navigation pill with a frosted-glass treatment.
 
-```
-Subscription_Management_System/
-├── .agents/skills/              # UI engineering skills (baseline-ui, fixing-accessibility, etc.)
-├── AGENTS.md                    # Project-level agent instructions
-├── Design.jpeg                  # Visual design specification board
-├── Subscription Management System - PRD.pdf  # 17-page detailed PRD
-│
-├── backend/                     # Django 5 REST Framework backend
-│   ├── manage.py
-│   ├── seed_data.py             # Pre-seeded database script with demo data
-│   ├── requirements.txt
-│   ├── brightloop/              # Project settings & URL routing (/api/v1/)
-│   └── apps/
-│       ├── accounts/            # User (email unique), roles (Admin, Staff, Customer), AUTH-2 validation
-│       ├── catalog/             # Products, cost vs sales margins, variants (PROD-1)
-│       ├── plans/               # Recurring billing plans with behavior flags
-│       ├── quotations/          # Quotation templates & auto-expiry generator
-│       ├── subscriptions/       # Subscriptions, lines, 5-stage state machine & audit log
-│       ├── billing/             # Taxes, discounts with limits, invoice generator (idempotent, Decimal math)
-│       ├── payments/            # Multi-method payments (UPI, wire, card), partials, auto-paid, void
-│       ├── reports/             # 5 KPI cards (MRR, active, overdue), revenue charts, month-end CSV
-│       └── portal/              # Customer self-service portal endpoints (strictly customer-scoped)
-│
-└── frontend/                    # React 18 + Vite + Tailwind CSS frontend
-    ├── package.json
-    ├── vite.config.js
-    ├── tailwind.config.js
-    ├── index.html
-    └── src/
-        ├── App.jsx
-        ├── context/DataContext.jsx  # Real-time state & API integration with role switching
-        ├── components/          # Button, PillNav, Navbar, SearchField, StatusBadge, Modals
-        └── pages/               # Dashboard, Subscriptions, Invoices, Payments, Catalog, Portal, Reports
+## Repository structure
+
+```text
+backend/
+  apps/                 Django apps for accounts, billing, catalog, plans,
+                        payments, portal, quotations, reports, subscriptions
+  brightloop/           Django settings and API routing
+  manage.py
+  requirements.txt
+  seed_data.py
+frontend/
+  src/
+    components/         Shared navigation and UI components
+    context/            Frontend state and demo role switching
+    pages/              Product screens and auth preview
+  package.json
+  vite.config.js
+Design.jpeg             Product design reference
+Subscription Management System - PRD.pdf
+                        Product requirements document
 ```
 
----
+## Getting started
 
-## 🚀 Quick Start Guide
+### Backend
 
-### 1. Backend Setup & Run
+Requires Python and pip. From the repository root:
 
 ```bash
-# Navigate to backend directory
 cd backend
+python -m venv .venv
+```
 
-# Install dependencies
+Activate the virtual environment (`.venv\Scripts\Activate.ps1` in PowerShell, or `source .venv/bin/activate` on macOS/Linux), then run:
+
+```bash
 pip install -r requirements.txt
-
-# Run migrations (already generated)
 python manage.py migrate
-
-# Seed database with sample data
 python seed_data.py
-
-# Start Django development server
 python manage.py runserver 8000
 ```
 
-The Django REST API will run at `http://127.0.0.1:8000/api/v1/`.
+The API is served at `http://127.0.0.1:8000/api/v1/`.
 
-### 2. Frontend Setup & Run
+### Frontend
+
+In a separate terminal, from the repository root:
 
 ```bash
-# Open a new terminal and navigate to frontend directory
 cd frontend
-
-# Install dependencies (already installed)
 npm install
-
-# Start Vite development server
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser.
+Open the local URL printed by Vite (typically `http://localhost:5173`).
 
----
+To run the frontend checks:
 
-## 🔑 Demo User Accounts (Pre-seeded)
+```bash
+npm test
+npm run lint
+npm run build
+```
 
-All accounts use the **AUTH-2** compliant password: `Password123!`
+## Frontend workflows
 
-| Role | Email | Password | Permissions |
-| :--- | :--- | :--- | :--- |
-| **Admin** | `admin@brightloop.io` | `Password123!` | Full access: manage staff, catalog, plans, discounts, void payments |
-| **Staff** | `staff@brightloop.io` | `Password123!` | Manage customers, quotes, subscriptions, generate & confirm invoices, record payments |
-| **Customer** | `customer@acmecorp.com` | `Password123!` | Self-service portal: view own subscriptions, download invoice PDFs, pay balance, self-service pause/renew/close |
+- Dashboard: subscription and billing overview.
+- Subscriptions: browse and explore subscription lifecycle actions.
+- Invoices and payments: review invoice and transaction workflows.
+- Catalog and plans: browse products and recurring plans.
+- Quotations, taxes, and discounts: explore configured examples.
+- Reports: review summary and reporting views.
+- Customer portal: explore the customer-facing subscription and billing experience.
+- Auth preview: responsive sign-in and account creation layouts, password checks, and demo role selection. No credentials are persisted or sent.
 
-You can switch roles directly using the quick-toggle in the top right corner of the navigation bar.
+## Backend capabilities
 
----
+The backend is organized into Django apps for account and role management, product catalog, billing plans, quotations, subscription lifecycle, invoice generation, payments, reporting, and customer self-service. Apply migrations and run `seed_data.py` to initialize a local development database with sample data.
 
-## 🛠️ PRD Features & Business Rules Tested
-- **INV-1 & INV-2**: Daily recurring invoice generation job; unique constraint `(subscription, period_start, period_end)` prevents double billing.
-- **TAX-3 & DISC-3**: Accurate Decimal arithmetic; discounts auto-applied with usage limit counters; taxes calculated on discounted amount.
-- **PAY-2 & PAY-3**: Partial payments supported; invoice moves automatically to `Paid` once balance reaches ₹0.
-- **SUB-1 & 6.1**: Full lifecycle state machine (`Draft` → `Quotation` → `Confirmed` → `Active` → `Closed` / `Paused`).
-- **AUTH-2**: Live 4-point password complexity validator (9+ characters, uppercase, lowercase, special character).
-- **PORT-1 to PORT-4**: Customer-scoped self-service portal with profile editing and printable invoice receipts.
+## Design reference
+
+The product requirements and visual specifications are in `Subscription Management System - PRD.pdf` and `Design.jpeg`, respectively.

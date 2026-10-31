@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { DataProvider } from './context/DataContext';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { PillNav } from './components/PillNav';
 import { InvoiceModal } from './components/InvoiceModal';
 import { RecordPaymentModal } from './components/RecordPaymentModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
+import { AuthPage } from './pages/AuthPage';
 
 import { DashboardPage } from './pages/DashboardPage';
 import { SubscriptionsPage } from './pages/SubscriptionsPage';
@@ -17,6 +19,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { CustomerPortalPage } from './pages/CustomerPortalPage';
 
 function MainApp() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeInvoice, setActiveInvoice] = useState(null);
   const [paymentInvoice, setPaymentInvoice] = useState(null);
@@ -32,7 +35,7 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-[#F7F6F8] flex flex-col font-sans">
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={() => navigate('/login')} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 py-6">
         {activeTab === 'dashboard' && (
@@ -117,7 +120,15 @@ function MainApp() {
 export default function App() {
   return (
     <DataProvider>
-      <MainApp />
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<AuthPage mode="login" />} />
+          <Route path="/register" element={<AuthPage mode="register" />} />
+          <Route path="/app" element={<MainApp />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
     </DataProvider>
   );
 }

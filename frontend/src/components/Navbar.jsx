@@ -1,8 +1,8 @@
 import React from 'react';
-import { Layers, ShieldCheck, UserCheck, User } from 'lucide-react';
+import { Layers, ShieldCheck, UserCheck, User, LogOut } from 'lucide-react';
 import { useData } from '../context/DataContext';
 
-export function Navbar({ activeTab, setActiveTab }) {
+export function Navbar({ activeTab, setActiveTab, onLogout }) {
   const { currentUser, activeRole, switchRole } = useData();
 
   return (
@@ -59,6 +59,16 @@ export function Navbar({ activeTab, setActiveTab }) {
               <p className="text-[10px] text-[#6E6B75] capitalize mt-0.5">{activeRole}</p>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={onLogout}
+            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[#6E6B75] transition-colors hover:bg-[#F3F2F5] hover:text-[#714B67] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#714B67]"
+            aria-label="Sign out"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden md:inline">Sign out</span>
+          </button>
         </div>
       </div>
     </header>
