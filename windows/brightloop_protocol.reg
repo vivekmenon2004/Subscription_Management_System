@@ -1,0 +1,20 @@
+Windows Registry Editor Version 5.00
+
+; ====================================================================
+; Brightloop Protocol Handler Registration for Windows
+; Protocol: brightloop://launch?code=<ONE_TIME_CODE>&product_id=<ID>
+; ====================================================================
+
+[HKEY_CURRENT_USER\Software\Classes\brightloop]
+@="URL:Brightloop Protocol"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\Software\Classes\brightloop\DefaultIcon]
+@="\"C:\\Python314\\python.exe\",0"
+
+[HKEY_CURRENT_USER\Software\Classes\brightloop\shell]
+
+[HKEY_CURRENT_USER\Software\Classes\brightloop\shell\open]
+
+[HKEY_CURRENT_USER\Software\Classes\brightloop\shell\open\command]
+@="\"C:\\Python314\\python.exe\" \"d:\\Subscription_Management_System\\windows\\brightloop_desktop_client.py\" \"%1\""

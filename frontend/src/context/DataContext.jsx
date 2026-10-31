@@ -46,6 +46,14 @@ const INITIAL_PRODUCTS = [
     sales_price: '1000.00',
     cost_price: '400.00',
     notes: 'Core enterprise resource planning module',
+    description: 'Enterprise Cloud Resource Planning suite with comprehensive invoicing, ledger, and inventory.',
+    icon_url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=128&q=80',
+    web_url: 'http://localhost:5173/app/cloud-erp',
+    desktop_download_url: 'https://downloads.brightloop.io/releases/brightloop-desktop-setup-v2.4.exe',
+    app_protocol: 'brightloop',
+    is_available: true,
+    is_access_enabled: true,
+    entitlements: { features: ['general_ledger', 'invoice_management', 'inventory_tracking', 'export_pdf'], max_users: 10 },
     default_tax: 1,
     default_tax_name: 'GST 18%',
     default_tax_rate: '18.00',
@@ -64,6 +72,14 @@ const INITIAL_PRODUCTS = [
     sales_price: '3000.00',
     cost_price: '1200.00',
     notes: '1-hour SLA response time guarantee',
+    description: '24/7 dedicated enterprise technical support with guaranteed 1-hour SLA response.',
+    icon_url: 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=128&q=80',
+    web_url: 'http://localhost:5173/app/support-portal',
+    desktop_download_url: '',
+    app_protocol: '',
+    is_available: true,
+    is_access_enabled: true,
+    entitlements: { features: ['ticket_priority', 'phone_support', 'sla_guarantee'] },
     default_tax: 1,
     default_tax_name: 'GST 18%',
     default_tax_rate: '18.00',
@@ -79,6 +95,14 @@ const INITIAL_PRODUCTS = [
     sales_price: '1500.00',
     cost_price: '500.00',
     notes: 'Automated predictive forecasting module',
+    description: 'AI-driven forecasting and cashflow predictions for recurring revenue businesses.',
+    icon_url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80',
+    web_url: 'http://localhost:5173/app/ai-forecasts',
+    desktop_download_url: 'https://downloads.brightloop.io/releases/brightloop-desktop-setup-v2.4.exe',
+    app_protocol: 'brightloop',
+    is_available: true,
+    is_access_enabled: true,
+    entitlements: { features: ['ai_prediction', 'cashflow_charting', 'anomaly_detection'] },
     default_tax: 1,
     default_tax_name: 'GST 18%',
     default_tax_rate: '18.00',
@@ -562,6 +586,87 @@ export function DataProvider({ children }) {
     });
   };
 
+  // Product Access & Launch API Services
+  const launchProductWeb = async (productId, subscriptionId = null) => {
+    try {
+      const res = await apiRequest(`/products/${productId}/launch/web`, 'POST', { subscription_id: subscriptionId });
+      return res;
+    } catch (err) {
+      // Local fallback for offline mode
+      const prod = products.find(p => p.id === productId);
+      const sub = subscriptions.find(s => s.id === subscriptionId) || subscriptions[0];
+      if (sub && sub.status !== 'Active') {
+        throw new Error(`Subscription ${sub.number} is in ${sub.status} status and does not permit access.`);
+      }
+      if (sub && sub.is_paused) {
+        throw new Error(`Subscription ${sub.number} is currently paused.`);
+      }
+      return {
+        status: 'success',
+        launch_type: 'web',
+        launch_url: prod?.web_url || `http://localhost:5173/app/${productId}?mock_token=demo-token`,
+        token: 'mock-web-token-xyz',
+        expires_in_seconds: 900,
+        product: { id: productId, name: prod?.name },
+        entitlements: prod?.entitlements || {}
+      };
+    }
+  };
+
+  const launchProductDesktop = async (productId, subscriptionId = null, codeChallenge = '') => {
+    try {
+      const res = await apiRequest(`/products/${productId}/launch/desktop`, 'POST', { 
+        subscription_id: subscriptionId, 
+        code_challenge: codeChallenge 
+      });
+      return res;
+    } catch (err) {
+      // Local fallback for offline mode
+      const prod = products.find(p => p.id === productId);
+      const sub = subscriptions.find(s => s.id === subscriptionId) || subscriptions[0];
+      if (sub && sub.status !== 'Active') {
+        throw new Error(`Subscription ${sub.number} is in ${sub.status} status and does not permit access.`);
+      }
+      if (sub && sub.is_paused) {
+        throw new Error(`Subscription ${sub.number} is currently paused.`);
+      }
+      const code = 'demo-code-' + Math.random().toString(36).substring(2, 10);
+      const protocol = prod?.app_protocol || 'brightloop';
+      return {
+        status: 'success',
+        launch_type: 'desktop',
+        protocol_url: `${protocol}://launch?code=${code}&product_id=${productId}`,
+        code,
+        expires_in_seconds: 120,
+        download_url: prod?.desktop_download_url,
+        app_protocol: protocol,
+        product: { id: productId, name: prod?.name },
+        entitlements: prod?.entitlements || {}
+      };
+    }
+  };
+
+  const exchangeDesktopCode = async (code, codeVerifier = '', productId = null) => {
+    return await apiRequest('/products/access/exchange-code', 'POST', {
+      code,
+      code_verifier: codeVerifier,
+      product_id: productId
+    });
+  };
+
+  const verifyWebToken = async (token, productId = null) => {
+    return await apiRequest('/products/access/verify-token', 'POST', {
+      token,
+      product_id: productId
+    });
+  };
+
+  const revokeProductSession = async (tokenOrSessionId) => {
+    return await apiRequest('/products/access/revoke-session', 'POST', {
+      token: tokenOrSessionId
+    });
+  };
+
   return (
     <DataContext.Provider value={{
       currentUser,
@@ -589,7 +694,12 @@ export function DataProvider({ children }) {
       addProduct,
       addPlan,
       addQuotationTemplate,
-      createQuotationFromTemplate
+      createQuotationFromTemplate,
+      launchProductWeb,
+      launchProductDesktop,
+      exchangeDesktopCode,
+      verifyWebToken,
+      revokeProductSession
     }}>
       {children}
     </DataContext.Provider>

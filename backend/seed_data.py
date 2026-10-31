@@ -84,10 +84,29 @@ def run_seed():
             'sales_price': Decimal('1000.00'),
             'cost_price': Decimal('400.00'),
             'notes': 'Core enterprise resource planning module',
+            'description': 'Enterprise Cloud Resource Planning suite with comprehensive invoicing, ledger, and inventory.',
+            'icon_url': 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=128&q=80',
+            'web_url': 'http://localhost:5173/app/cloud-erp',
+            'desktop_download_url': 'https://downloads.brightloop.io/releases/brightloop-desktop-setup-v2.4.exe',
+            'app_protocol': 'brightloop',
+            'is_available': True,
+            'is_access_enabled': True,
+            'entitlements': {"features": ["general_ledger", "invoice_management", "inventory_tracking", "export_pdf"], "max_users": 10},
             'default_tax': gst18,
             'is_active': True
         }
     )
+    # Ensure fields are updated if record already existed
+    erp.description = 'Enterprise Cloud Resource Planning suite with comprehensive invoicing, ledger, and inventory.'
+    erp.icon_url = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=128&q=80'
+    erp.web_url = 'http://localhost:5173/app/cloud-erp'
+    erp.desktop_download_url = 'https://downloads.brightloop.io/releases/brightloop-desktop-setup-v2.4.exe'
+    erp.app_protocol = 'brightloop'
+    erp.is_available = True
+    erp.is_access_enabled = True
+    erp.entitlements = {"features": ["general_ledger", "invoice_management", "inventory_tracking", "export_pdf"], "max_users": 10}
+    erp.save()
+
     v_odoo, _ = ProductVariant.objects.get_or_create(
         product=erp,
         attribute='Brand',
@@ -108,10 +127,23 @@ def run_seed():
             'sales_price': Decimal('3000.00'),
             'cost_price': Decimal('1200.00'),
             'notes': '1-hour SLA response time guarantee',
+            'description': '24/7 dedicated enterprise technical support with guaranteed 1-hour SLA response.',
+            'icon_url': 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=128&q=80',
+            'web_url': 'http://localhost:5173/app/support-portal',
+            'is_available': True,
+            'is_access_enabled': True,
+            'entitlements': {"features": ["ticket_priority", "phone_support", "sla_guarantee"]},
             'default_tax': gst18,
             'is_active': True
         }
     )
+    support.description = '24/7 dedicated enterprise technical support with guaranteed 1-hour SLA response.'
+    support.icon_url = 'https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=128&q=80'
+    support.web_url = 'http://localhost:5173/app/support-portal'
+    support.is_available = True
+    support.is_access_enabled = True
+    support.entitlements = {"features": ["ticket_priority", "phone_support", "sla_guarantee"]}
+    support.save()
 
     ai_addon, _ = Product.objects.get_or_create(
         name='AI Insights & Forecasts',
@@ -120,10 +152,27 @@ def run_seed():
             'sales_price': Decimal('1500.00'),
             'cost_price': Decimal('500.00'),
             'notes': 'Automated predictive forecasting module',
+            'description': 'AI-driven forecasting and cashflow predictions for recurring revenue businesses.',
+            'icon_url': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80',
+            'web_url': 'http://localhost:5173/app/ai-forecasts',
+            'desktop_download_url': 'https://downloads.brightloop.io/releases/brightloop-desktop-setup-v2.4.exe',
+            'app_protocol': 'brightloop',
+            'is_available': True,
+            'is_access_enabled': True,
+            'entitlements': {"features": ["ai_prediction", "cashflow_charting", "anomaly_detection"]},
             'default_tax': gst18,
             'is_active': True
         }
     )
+    ai_addon.description = 'AI-driven forecasting and cashflow predictions for recurring revenue businesses.'
+    ai_addon.icon_url = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=128&q=80'
+    ai_addon.web_url = 'http://localhost:5173/app/ai-forecasts'
+    ai_addon.desktop_download_url = 'https://downloads.brightloop.io/releases/brightloop-desktop-setup-v2.4.exe'
+    ai_addon.app_protocol = 'brightloop'
+    ai_addon.is_available = True
+    ai_addon.is_access_enabled = True
+    ai_addon.entitlements = {"features": ["ai_prediction", "cashflow_charting", "anomaly_detection"]}
+    ai_addon.save()
 
     # 4. Plans
     p_monthly, _ = Plan.objects.get_or_create(
@@ -137,9 +186,13 @@ def run_seed():
             'closable': True,
             'pausable': True,
             'renewable': True,
+            'entitlements': {"tier": "Professional", "max_users": 10, "features": ["standard_reporting"]},
             'is_active': True
         }
     )
+    p_monthly.entitlements = {"tier": "Professional", "max_users": 10, "features": ["standard_reporting"]}
+    p_monthly.save()
+
     p_yearly, _ = Plan.objects.get_or_create(
         name='Enterprise Annual Plan',
         defaults={
@@ -151,9 +204,12 @@ def run_seed():
             'closable': True,
             'pausable': True,
             'renewable': True,
+            'entitlements': {"tier": "Enterprise", "max_users": 50, "features": ["advanced_reporting", "audit_trail", "custom_branding"]},
             'is_active': True
         }
     )
+    p_yearly.entitlements = {"tier": "Enterprise", "max_users": 50, "features": ["advanced_reporting", "audit_trail", "custom_branding"]}
+    p_yearly.save()
 
     # 5. Discounts
     disc10, _ = Discount.objects.get_or_create(

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Package, Layers, AlertTriangle, Check, SlidersHorizontal } from 'lucide-react';
+import { Plus, Package, Layers, AlertTriangle, Check, SlidersHorizontal, Globe, Monitor, Download, Laptop, ShieldCheck } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { Button } from '../components/Button';
 
@@ -9,9 +9,16 @@ export function CatalogPage() {
 
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [newProdName, setNewProdName] = useState('');
+  const [newProdDescription, setNewProdDescription] = useState('');
   const [newProdType, setNewProdType] = useState('Software');
   const [newProdSales, setNewProdSales] = useState('1000.00');
   const [newProdCost, setNewProdCost] = useState('400.00');
+  const [newProdIcon, setNewProdIcon] = useState('');
+  const [newProdWebUrl, setNewProdWebUrl] = useState('');
+  const [newProdDesktopUrl, setNewProdDesktopUrl] = useState('');
+  const [newProdProtocol, setNewProdProtocol] = useState('brightloop');
+  const [newProdAvailable, setNewProdAvailable] = useState(true);
+  const [newProdAccessEnabled, setNewProdAccessEnabled] = useState(true);
   const [newProdVariantAttr, setNewProdVariantAttr] = useState('Tier');
   const [newProdVariantVal, setNewProdVariantVal] = useState('Pro');
   const [newProdVariantExtra, setNewProdVariantExtra] = useState('500.00');
@@ -33,14 +40,26 @@ export function CatalogPage() {
 
     addProduct({
       name: newProdName,
+      description: newProdDescription,
       type: newProdType,
       sales_price: Number(newProdSales).toFixed(2),
       cost_price: Number(newProdCost).toFixed(2),
+      icon_url: newProdIcon,
+      web_url: newProdWebUrl,
+      desktop_download_url: newProdDesktopUrl,
+      app_protocol: newProdProtocol,
+      is_available: newProdAvailable,
+      is_access_enabled: newProdAccessEnabled,
+      entitlements: { features: ['core_access'] },
       variants
     });
 
     setShowAddProduct(false);
     setNewProdName('');
+    setNewProdDescription('');
+    setNewProdIcon('');
+    setNewProdWebUrl('');
+    setNewProdDesktopUrl('');
   };
 
   const handleCreatePlan = (e) => {
@@ -124,7 +143,39 @@ export function CatalogPage() {
                   )}
                 </div>
                 <h3 className="font-semibold text-base text-[#25232A] mt-2">{prod.name}</h3>
-                <p className="text-xs text-[#6E6B75] mt-0.5">{prod.notes || 'Catalog software subscription item'}</p>
+                <p className="text-xs text-[#6E6B75] mt-0.5">{prod.description || prod.notes || 'Catalog software subscription item'}</p>
+
+                {/* Product Access Capabilities Badges (Requirement 3) */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                  {prod.web_url ? (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                      <Globe className="w-3 h-3" /> Web App
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-gray-50 text-gray-400 border border-gray-200">
+                      No Web URL
+                    </span>
+                  )}
+                  {prod.app_protocol ? (
+                    <span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                      <Monitor className="w-3 h-3" /> Windows Desktop
+                    </span>
+                  ) : (
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-gray-50 text-gray-400 border border-gray-200">
+                      No Desktop Protocol
+                    </span>
+                  )}
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${
+                    prod.is_available !== false ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'
+                  }`}>
+                    {prod.is_available !== false ? 'Available' : 'Unavailable'}
+                  </span>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded border ${
+                    prod.is_access_enabled !== false ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                  }`}>
+                    {prod.is_access_enabled !== false ? 'Access: ON' : 'Access: OFF'}
+                  </span>
+                </div>
               </div>
 
               {/* Price & Margin Breakdown (PRD 4.2) */}
@@ -259,6 +310,90 @@ export function CatalogPage() {
                   onChange={(e) => setNewProdCost(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-[#D7D4DC] focus:border-[#714B67] focus:outline-none tabular-nums"
                 />
+              </div>
+
+              {/* Product Access Configuration Fields (Section 3) */}
+              <div className="pt-2 border-t border-[#E8E6EB] space-y-2">
+                <p className="font-semibold text-[#25232A]">Product Access & Application URLs</p>
+                
+                <div>
+                  <label className="block text-[#6E6B75] mb-1">Description</label>
+                  <textarea
+                    rows="2"
+                    placeholder="Comprehensive description of product functionality"
+                    value={newProdDescription}
+                    onChange={(e) => setNewProdDescription(e.target.value)}
+                    className="w-full px-3 py-1.5 rounded-xl border border-[#D7D4DC] focus:border-[#714B67] focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[#6E6B75] mb-1">Web Application URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://app.brightloop.io"
+                      value={newProdWebUrl}
+                      onChange={(e) => setNewProdWebUrl(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-[#D7D4DC] focus:border-[#714B67] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#6E6B75] mb-1">Launch Protocol</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. brightloop"
+                      value={newProdProtocol}
+                      onChange={(e) => setNewProdProtocol(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-[#D7D4DC] focus:border-[#714B67] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[#6E6B75] mb-1">Windows Download URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://downloads.../setup.exe"
+                      value={newProdDesktopUrl}
+                      onChange={(e) => setNewProdDesktopUrl(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-[#D7D4DC] focus:border-[#714B67] focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#6E6B75] mb-1">Icon / Image URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://.../icon.png"
+                      value={newProdIcon}
+                      onChange={(e) => setNewProdIcon(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-[#D7D4DC] focus:border-[#714B67] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Status Toggles */}
+                <div className="flex items-center gap-4 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newProdAvailable}
+                      onChange={(e) => setNewProdAvailable(e.target.checked)}
+                      className="rounded text-[#714B67] focus:ring-[#714B67]"
+                    />
+                    <span className="font-medium text-[#25232A]">Product Available</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newProdAccessEnabled}
+                      onChange={(e) => setNewProdAccessEnabled(e.target.checked)}
+                      className="rounded text-[#714B67] focus:ring-[#714B67]"
+                    />
+                    <span className="font-medium text-[#25232A]">Access Enabled</span>
+                  </label>
+                </div>
               </div>
 
               <div className="pt-2 border-t border-[#E8E6EB]">

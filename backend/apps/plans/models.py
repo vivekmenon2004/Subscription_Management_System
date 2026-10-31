@@ -22,6 +22,9 @@ class Plan(models.Model):
     pausable = models.BooleanField(default=True)
     renewable = models.BooleanField(default=True)
     
+    # Entitlements / Feature Limits
+    entitlements = models.JSONField(default=dict, blank=True)
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

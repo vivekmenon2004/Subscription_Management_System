@@ -8,7 +8,7 @@ class PlanSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'price', 'billing_period', 'min_quantity',
             'available_from', 'available_to', 'auto_close', 'closable',
-            'pausable', 'renewable', 'is_active', 'created_at'
+            'pausable', 'renewable', 'entitlements', 'is_active', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
 
