@@ -49,6 +49,16 @@ The backend and deployment services described in the PRD have not yet been added
 
 ## Frontend demo
 
+The app opens on the **sign-in** screen (`/login`), with account creation at `/register`. These entry screens include Zod-backed password checks, password confirmation, password visibility, selectable demo roles, and responsive layouts. Authentication is not connected to a backend: submitted credentials are not sent or stored. Use a demo role chip to enter the seeded workspace; sign out returns to the sign-in screen.
+
+Run the auth-focused checks from `frontend/`:
+
+```bash
+npm test
+npm run lint
+npm run build
+```
+
 The current React app includes these screens and workflows:
 
 - **Dashboard:** Subscription and billing overview, with a demo billing-generation action.
