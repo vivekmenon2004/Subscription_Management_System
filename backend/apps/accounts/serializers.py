@@ -81,6 +81,11 @@ class CreateStaffSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     name = serializers.CharField()
+    role = serializers.ChoiceField(
+        choices=[User.Role.STAFF, User.Role.ADMIN],
+        default=User.Role.STAFF,
+        required=False
+    )
 
     def validate_email(self, value):
         normalized = value.strip().lower()
@@ -96,9 +101,14 @@ class CreateStaffSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
+        role = validated_data.get('role', User.Role.STAFF)
+        is_staff = True if role in [User.Role.ADMIN, User.Role.STAFF] else False
+        is_superuser = True if role == User.Role.ADMIN else False
         return User.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],
             name=validated_data['name'],
-            role=User.Role.STAFF
+            role=role,
+            is_staff=is_staff,
+            is_superuser=is_superuser
         )

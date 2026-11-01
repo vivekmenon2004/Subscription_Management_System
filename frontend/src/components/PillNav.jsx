@@ -6,14 +6,14 @@ export function PillNav({ activeTab, setActiveTab }) {
   const { activeRole } = useData();
 
   const adminTabs = [
-    { id: 'dashboard', label: 'Finance Cockpit', icon: Home },
+    { id: 'dashboard', label: 'Admin Dashboard', icon: Home },
     { id: 'subscriptions', label: 'Subscriptions', icon: Repeat },
     { id: 'invoices', label: 'Invoices', icon: FileText },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'catalog', label: 'Catalog & Plans', icon: Package },
     { id: 'quotations', label: 'Quotations', icon: FileSignature },
     { id: 'taxes_discounts', label: 'Taxes & Discounts', icon: Tags },
-    { id: 'staff', label: 'Staff Management (Admin Only)', icon: Users },
+    { id: 'staff', label: 'Staff Management', icon: Users },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'portal', label: 'Customer Portal', icon: User },
   ];

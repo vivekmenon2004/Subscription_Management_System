@@ -23,7 +23,7 @@ export function StaffManagementPage({ setActiveTab }) {
   const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
   const isPasswordValid = hasMinLength && hasUpper && hasLower && hasSpecial;
 
-  const handleCreateStaff = (e) => {
+  const handleCreateStaff = async (e) => {
     e.preventDefault();
     setErrorNotice('');
 
@@ -41,7 +41,7 @@ export function StaffManagementPage({ setActiveTab }) {
     }
 
     try {
-      const created = addStaffMember({ name, email, password, role });
+      const created = await addStaffMember({ name, email, password, role });
       setSuccessNotice(`Staff member ${created.name} (${created.email}) provisioned successfully.`);
       setShowAddModal(false);
       setName('');

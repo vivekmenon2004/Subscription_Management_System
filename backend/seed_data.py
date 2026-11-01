@@ -11,7 +11,7 @@ from apps.accounts.models import User, CustomerProfile
 from apps.catalog.models import Product, ProductVariant
 from apps.plans.models import Plan
 from apps.quotations.models import QuotationTemplate, QuotationTemplateLine
-from apps.subscriptions.models import Subscription, SubscriptionLine
+from apps.subscriptions.models import Subscription, SubscriptionLine, AuditLog
 from apps.billing.models import Tax, Discount, Invoice, InvoiceLine
 from apps.billing.services import generate_invoice_for_period
 from apps.payments.models import Payment
@@ -22,10 +22,23 @@ def run_seed():
     # 1. Users
     admin, _ = User.objects.get_or_create(
         email='admin@brightloop.io',
-        defaults={'name': 'Admin User', 'role': User.Role.ADMIN, 'is_staff': True}
+        defaults={'name': 'Admin User', 'role': User.Role.ADMIN, 'is_staff': True, 'is_superuser': True}
     )
     admin.set_password('Password123!')
+    admin.is_staff = True
+    admin.is_superuser = True
+    admin.role = User.Role.ADMIN
     admin.save()
+
+    superadmin, _ = User.objects.get_or_create(
+        email='admin@admin.com',
+        defaults={'name': 'Super Admin', 'role': User.Role.ADMIN, 'is_staff': True, 'is_superuser': True}
+    )
+    superadmin.set_password('Password123!')
+    superadmin.is_staff = True
+    superadmin.is_superuser = True
+    superadmin.role = User.Role.ADMIN
+    superadmin.save()
 
     staff, _ = User.objects.get_or_create(
         email='staff@brightloop.io',
@@ -483,6 +496,13 @@ def run_seed():
                 'recorded_by': staff
             }
         )
+
+    # 7. Audit Logs & Staff/Admin Activity History
+    if not AuditLog.objects.filter(entity_type='BillingEngine').exists():
+        AuditLog.objects.create(actor=admin, entity_type='BillingEngine', entity_id='JOB-BATCH-891', action='ExecutedBillingCycle', before_after_json={'invoices_created': 3})
+        AuditLog.objects.create(actor=staff, entity_type='Subscription', entity_id='SUB-000003', action='InstantiatedQuote', before_after_json={'template': 'Enterprise ERP + Support'})
+        AuditLog.objects.create(actor=staff, entity_type='Payment', entity_id='INV-2026-000002', action='RecordedPayment', before_after_json={'amount': '1000.00', 'method': 'UPI'})
+        AuditLog.objects.create(actor=admin, entity_type='Staff', entity_id='USR-002', action='ProvisionedStaffAccount', before_after_json={'name': 'Sarah Jenkins'})
 
     print("[SUCCESS] Database seeding completed successfully!")
     print(f"   Admin: {admin.email} (Password: Password123!)")

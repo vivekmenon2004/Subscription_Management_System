@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { DataProvider, useData } from './context/DataContext';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
@@ -27,6 +27,14 @@ function MainApp() {
   const [activeTab, setActiveTab] = useState(() => (
     currentUser?.role === 'customer' ? 'portal' : 'dashboard'
   ));
+
+  useEffect(() => {
+    if (currentUser?.role === 'customer') {
+      setActiveTab('portal');
+    } else {
+      setActiveTab('dashboard');
+    }
+  }, [currentUser?.role]);
   const [activeInvoice, setActiveInvoice] = useState(null);
   const [paymentInvoice, setPaymentInvoice] = useState(null);
   const [showNewSubModal, setShowNewSubModal] = useState(false);

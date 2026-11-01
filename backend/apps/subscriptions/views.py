@@ -1,12 +1,12 @@
 from datetime import timedelta
 from django.utils import timezone
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.accounts.permissions import IsStaffOrAdmin
 from .models import Subscription, AuditLog
-from .serializers import SubscriptionSerializer
+from .serializers import SubscriptionSerializer, AuditLogSerializer
 
 def get_period_delta(period):
     if period == 'daily':
@@ -143,3 +143,9 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
             before_after_json={"reason": reason}
         )
         return Response(SubscriptionSerializer(sub).data)
+
+class AuditLogListView(generics.ListAPIView):
+    permission_classes = [IsStaffOrAdmin]
+    serializer_class = AuditLogSerializer
+    queryset = AuditLog.objects.select_related('actor').all().order_by('-timestamp')
+

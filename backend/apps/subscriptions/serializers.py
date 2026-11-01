@@ -172,3 +172,15 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             'status', 'subscription', 'invoice', 'payment', 'created_at', 'updated_at'
         ]
 
+class AuditLogSerializer(serializers.ModelSerializer):
+    actor_name = serializers.CharField(source='actor.name', read_only=True)
+    actor_email = serializers.CharField(source='actor.email', read_only=True)
+    actor_role = serializers.CharField(source='actor.role', read_only=True)
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            'id', 'actor', 'actor_name', 'actor_email', 'actor_role',
+            'entity_type', 'entity_id', 'action', 'before_after_json', 'timestamp'
+        ]
+

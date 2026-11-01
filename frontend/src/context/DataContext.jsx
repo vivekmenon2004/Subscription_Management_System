@@ -362,6 +362,86 @@ const INITIAL_STAFF = [
   { id: 2, name: 'Sarah Jenkins', email: 'staff@brightloop.io', role: 'staff', is_active: true, created_at: '2026-10-15' }
 ];
 
+const INITIAL_AUDIT_LOGS = [
+  {
+    id: 1,
+    actor_name: 'Sarah Jenkins',
+    actor_email: 'staff@brightloop.io',
+    actor_role: 'staff',
+    entity_type: 'Subscription',
+    entity_id: 'SUB-000003',
+    action: 'InstantiatedQuote',
+    before_after_json: { template: 'Enterprise ERP + Support', value: '₹3,000.00' },
+    timestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString()
+  },
+  {
+    id: 2,
+    actor_name: 'Sarah Jenkins',
+    actor_email: 'staff@brightloop.io',
+    actor_role: 'staff',
+    entity_type: 'Payment',
+    entity_id: 'INV-2026-000002',
+    action: 'RecordedPayment',
+    before_after_json: { amount: '1000.00', method: 'UPI' },
+    timestamp: new Date(Date.now() - 5 * 3600 * 1000).toISOString()
+  },
+  {
+    id: 3,
+    actor_name: 'Admin User',
+    actor_email: 'admin@brightloop.io',
+    actor_role: 'admin',
+    entity_type: 'BillingEngine',
+    entity_id: 'JOB-BATCH-891',
+    action: 'ExecutedBillingCycle',
+    before_after_json: { invoices_created: 3, auto_batch: true },
+    timestamp: new Date(Date.now() - 12 * 3600 * 1000).toISOString()
+  },
+  {
+    id: 4,
+    actor_name: 'Sarah Jenkins',
+    actor_email: 'staff@brightloop.io',
+    actor_role: 'staff',
+    entity_type: 'Subscription',
+    entity_id: 'SUB-000001',
+    action: 'Activated',
+    before_after_json: { customer: 'Rahul Sharma', plan: 'Standard Monthly' },
+    timestamp: new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+  },
+  {
+    id: 5,
+    actor_name: 'Sarah Jenkins',
+    actor_email: 'staff@brightloop.io',
+    actor_role: 'staff',
+    entity_type: 'Payment',
+    entity_id: 'INV-2026-000001',
+    action: 'RecordedPayment',
+    before_after_json: { amount: '4842.72', method: 'Bank Transfer' },
+    timestamp: new Date(Date.now() - 48 * 3600 * 1000).toISOString()
+  },
+  {
+    id: 6,
+    actor_name: 'Admin User',
+    actor_email: 'admin@brightloop.io',
+    actor_role: 'admin',
+    entity_type: 'Staff',
+    entity_id: 'USR-002',
+    action: 'ProvisionedStaffAccount',
+    before_after_json: { name: 'Sarah Jenkins', role: 'staff' },
+    timestamp: new Date(Date.now() - 5 * 24 * 3600 * 1000).toISOString()
+  },
+  {
+    id: 7,
+    actor_name: 'Admin User',
+    actor_email: 'admin@brightloop.io',
+    actor_role: 'admin',
+    entity_type: 'TaxRule',
+    entity_id: 'TAX-001',
+    action: 'CreatedTaxRule',
+    before_after_json: { name: 'GST 18%', rate: '18.00' },
+    timestamp: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString()
+  }
+];
+
 export function DataProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [activeRole, setActiveRole] = useState(null);
@@ -383,11 +463,19 @@ export function DataProvider({ children }) {
   const [subscribedProducts, setSubscribedProducts] = useState({ active_products: [], inactive_products: [], total_count: 0 });
   const [customerPurchaseOrders, setCustomerPurchaseOrders] = useState([]);
   const [isDiscoveryLoading, setIsDiscoveryLoading] = useState(false);
-  const taxes = INITIAL_TAXES;
-  const discounts = INITIAL_DISCOUNTS;
+  const [taxes, setTaxes] = useState(INITIAL_TAXES);
+  const [discounts, setDiscounts] = useState(INITIAL_DISCOUNTS);
+  const [auditLogs, setAuditLogs] = useState(INITIAL_AUDIT_LOGS);
+  const [revenueReport, setRevenueReport] = useState(null);
+
+  const unwrapList = (data) => {
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.results)) return data.results;
+    return [];
+  };
 
   // Real-time synchronization helper for customer data & discovery
-  const refreshCustomerData = async () => {
+  const refreshCustomerData = async (forcedRole = null) => {
     try {
       setIsDiscoveryLoading(true);
       const [trendingRes, productsRes] = await Promise.allSettled([
@@ -395,37 +483,119 @@ export function DataProvider({ children }) {
         apiRequest('/portal/products')
       ]);
 
-      if (trendingRes.status === 'fulfilled' && trendingRes.value?.trending_plans) {
-        setTrendingPlans(trendingRes.value.trending_plans);
+      if (trendingRes.status === 'fulfilled') {
+        const list = trendingRes.value?.trending_plans || unwrapList(trendingRes.value);
+        if (list.length > 0) setTrendingPlans(list);
       }
-      if (productsRes.status === 'fulfilled' && productsRes.value?.products) {
-        setCatalogProducts(productsRes.value.products);
+      if (productsRes.status === 'fulfilled') {
+        const list = productsRes.value?.products || unwrapList(productsRes.value);
+        if (list.length > 0) setCatalogProducts(list);
       }
 
-      // If customer is authenticated, fetch their private records
-      if (getAccessToken()) {
-        const [subsRes, subProdsRes, invsRes, paysRes, ordersRes] = await Promise.allSettled([
-          apiRequest('/portal/subscriptions'),
-          apiRequest('/portal/subscribed-products'),
-          apiRequest('/portal/invoices'),
-          apiRequest('/portal/payments'),
-          apiRequest('/portal/purchase/orders')
-        ]);
+      const token = getAccessToken();
+      const role = forcedRole || activeRole || currentUser?.role;
 
-        if (subsRes.status === 'fulfilled' && Array.isArray(subsRes.value)) {
-          setSubscriptions(subsRes.value);
-        }
-        if (subProdsRes.status === 'fulfilled' && subProdsRes.value) {
-          setSubscribedProducts(subProdsRes.value);
-        }
-        if (invsRes.status === 'fulfilled' && Array.isArray(invsRes.value)) {
-          setInvoices(invsRes.value);
-        }
-        if (paysRes.status === 'fulfilled' && Array.isArray(paysRes.value)) {
-          setPayments(paysRes.value);
-        }
-        if (ordersRes.status === 'fulfilled' && Array.isArray(ordersRes.value)) {
-          setCustomerPurchaseOrders(ordersRes.value);
+      if (token) {
+        if (role === 'admin' || role === 'staff') {
+          const [
+            subsRes,
+            invsRes,
+            paysRes,
+            custsRes,
+            prodsRes,
+            plansRes,
+            tplsRes,
+            taxesRes,
+            discsRes,
+            staffRes,
+            auditRes,
+            revRes
+          ] = await Promise.allSettled([
+            apiRequest('/subscriptions'),
+            apiRequest('/invoices'),
+            apiRequest('/payments'),
+            apiRequest('/customers'),
+            apiRequest('/products'),
+            apiRequest('/plans'),
+            apiRequest('/quotation-templates'),
+            apiRequest('/taxes'),
+            apiRequest('/discounts'),
+            apiRequest('/staff'),
+            apiRequest('/audit-logs'),
+            apiRequest('/reports/revenue')
+          ]);
+
+          if (subsRes.status === 'fulfilled') {
+            const list = unwrapList(subsRes.value);
+            if (list.length > 0 || role === 'admin') setSubscriptions(list);
+          }
+          if (invsRes.status === 'fulfilled') {
+            const list = unwrapList(invsRes.value);
+            if (list.length > 0 || role === 'admin') setInvoices(list);
+          }
+          if (paysRes.status === 'fulfilled') {
+            const list = unwrapList(paysRes.value);
+            if (list.length > 0 || role === 'admin') setPayments(list);
+          }
+          if (custsRes.status === 'fulfilled') {
+            const list = unwrapList(custsRes.value);
+            if (list.length > 0) setCustomers(list);
+          }
+          if (prodsRes.status === 'fulfilled') {
+            const list = unwrapList(prodsRes.value);
+            if (list.length > 0) setProducts(list);
+          }
+          if (plansRes.status === 'fulfilled') {
+            const list = unwrapList(plansRes.value);
+            if (list.length > 0) setPlans(list);
+          }
+          if (tplsRes.status === 'fulfilled') {
+            const list = unwrapList(tplsRes.value);
+            if (list.length > 0) setTemplates(list);
+          }
+          if (taxesRes.status === 'fulfilled') {
+            const list = unwrapList(taxesRes.value);
+            if (list.length > 0) setTaxes(list);
+          }
+          if (discsRes.status === 'fulfilled') {
+            const list = unwrapList(discsRes.value);
+            if (list.length > 0) setDiscounts(list);
+          }
+          if (staffRes.status === 'fulfilled') {
+            const list = unwrapList(staffRes.value);
+            if (list.length > 0) setStaffMembers(list);
+          }
+          if (auditRes?.status === 'fulfilled') {
+            const list = unwrapList(auditRes.value);
+            if (list.length > 0) setAuditLogs(list);
+          }
+          if (revRes?.status === 'fulfilled' && revRes.value) {
+            setRevenueReport(revRes.value);
+          }
+        } else {
+          const [subsRes, subProdsRes, invsRes, paysRes, ordersRes] = await Promise.allSettled([
+            apiRequest('/portal/subscriptions'),
+            apiRequest('/portal/subscribed-products'),
+            apiRequest('/portal/invoices'),
+            apiRequest('/portal/payments'),
+            apiRequest('/portal/purchase/orders')
+          ]);
+
+          if (subsRes.status === 'fulfilled') {
+            setSubscriptions(unwrapList(subsRes.value));
+          }
+          if (subProdsRes.status === 'fulfilled' && subProdsRes.value) {
+            setSubscribedProducts(subProdsRes.value);
+          }
+          if (invsRes.status === 'fulfilled') {
+            setInvoices(unwrapList(invsRes.value));
+          }
+          if (paysRes.status === 'fulfilled') {
+            setPayments(unwrapList(paysRes.value));
+          }
+          if (ordersRes.status === 'fulfilled') {
+            setCustomerPurchaseOrders(unwrapList(ordersRes.value));
+          }
         }
       }
     } catch (err) {
@@ -447,7 +617,7 @@ export function DataProvider({ children }) {
         setCurrentUser(user);
         setActiveRole(user.role);
         setIsAuthenticated(true);
-        refreshCustomerData();
+        refreshCustomerData(user.role);
       })
       .catch(() => clearAuthTokens())
       .finally(() => {
@@ -491,6 +661,7 @@ export function DataProvider({ children }) {
     setIsAuthenticated(true);
     setIsDemo(false);
     setAuthReady(true);
+    refreshCustomerData(response.user.role);
   };
 
   const login = async ({ email, password, rememberMe = false }) => {
@@ -710,6 +881,22 @@ export function DataProvider({ children }) {
   };
 
   // Payment Actions
+  const recordLocalAuditLog = (action, entityType, entityId, details = {}) => {
+    const actor = currentUser || { name: 'System', role: activeRole || 'staff', email: '' };
+    const newEntry = {
+      id: Date.now(),
+      actor_name: actor.name,
+      actor_email: actor.email,
+      actor_role: actor.role || activeRole || 'staff',
+      entity_type: entityType,
+      entity_id: String(entityId),
+      action,
+      before_after_json: details,
+      timestamp: new Date().toISOString()
+    };
+    setAuditLogs(prev => [newEntry, ...prev]);
+  };
+
   const recordPayment = ({ invoiceId, method, amount, note }) => {
     const payAmt = Number(amount);
     const id = payments.length + 1;
@@ -791,7 +978,7 @@ export function DataProvider({ children }) {
   };
 
   // Staff Management (PRD AUTH-5: Only an Admin can manage staff members)
-  const addStaffMember = (staffData) => {
+  const addStaffMember = async (staffData) => {
     if (activeRole !== 'admin') {
       throw new Error("Only an Admin can create staff accounts (PRD AUTH-5)");
     }
@@ -804,15 +991,44 @@ export function DataProvider({ children }) {
       is_active: true,
       created_at: new Date().toISOString().split('T')[0]
     };
-    setStaffMembers([newStaff, ...staffMembers]);
+    if (getAccessToken() && !isDemo) {
+      try {
+        const saved = await apiRequest('/staff', 'POST', {
+          name: staffData.name,
+          email: staffData.email.toLowerCase(),
+          password: staffData.password,
+          role: staffData.role || 'staff'
+        });
+        setStaffMembers(prev => [saved, ...prev]);
+        return saved;
+      } catch (err) {
+        if (err.data?.email) {
+          throw new Error(Array.isArray(err.data.email) ? err.data.email[0] : err.data.email);
+        }
+        if (err.data?.password) {
+          throw new Error(Array.isArray(err.data.password) ? err.data.password[0] : err.data.password);
+        }
+        throw err;
+      }
+    }
+    setStaffMembers(prev => [newStaff, ...prev]);
     return newStaff;
   };
 
-  const toggleStaffStatus = (id) => {
+  const toggleStaffStatus = async (id) => {
     if (activeRole !== 'admin') {
       throw new Error("Only an Admin can modify staff status (PRD 2.1)");
     }
-    setStaffMembers(prev => prev.map(s => s.id === id ? { ...s, is_active: !s.is_active } : s));
+    const target = staffMembers.find(s => s.id === id);
+    const nextStatus = target ? !target.is_active : false;
+    setStaffMembers(prev => prev.map(s => s.id === id ? { ...s, is_active: nextStatus } : s));
+    if (getAccessToken() && !isDemo) {
+      try {
+        await apiRequest(`/staff/${id}`, 'PATCH', { is_active: nextStatus });
+      } catch (err) {
+        console.warn('API toggleStaffStatus failed:', err.message);
+      }
+    }
   };
 
   // Catalog Actions (PRD 2.1: Products/Plans/Taxes/Discounts are Admin-only)
@@ -852,7 +1068,7 @@ export function DataProvider({ children }) {
     setTemplates([{ ...tpl, id, is_active: true }, ...templates]);
   };
 
-  const addTax = (taxData) => {
+  const addTax = async (taxData) => {
     if (activeRole !== 'admin') {
       throw new Error("Only an Admin can configure taxes (PRD 4.7)");
     }
@@ -864,11 +1080,25 @@ export function DataProvider({ children }) {
       is_inclusive: Boolean(taxData.is_inclusive),
       is_active: true
     };
-    setTaxes([...taxes, newTax]);
+    if (getAccessToken() && !isDemo) {
+      try {
+        const saved = await apiRequest('/taxes', 'POST', {
+          name: newTax.name,
+          rate: newTax.rate,
+          is_inclusive: newTax.is_inclusive,
+          is_active: true
+        });
+        setTaxes(prev => [...prev, saved]);
+        return saved;
+      } catch (err) {
+        console.warn('API addTax failed, using fallback:', err.message);
+      }
+    }
+    setTaxes(prev => [...prev, newTax]);
     return newTax;
   };
 
-  const addDiscount = (discData) => {
+  const addDiscount = async (discData) => {
     if (activeRole !== 'admin') {
       throw new Error("Only an Admin can create discount rules (PRD 4.8)");
     }
@@ -886,7 +1116,24 @@ export function DataProvider({ children }) {
       start_date: discData.start_date || new Date().toISOString().split('T')[0],
       end_date: discData.end_date || null
     };
-    setDiscounts([newDisc, ...discounts]);
+    if (getAccessToken() && !isDemo) {
+      try {
+        const saved = await apiRequest('/discounts', 'POST', {
+          name: newDisc.name,
+          type: newDisc.type,
+          value: newDisc.value,
+          min_purchase: newDisc.min_purchase,
+          min_quantity: newDisc.min_quantity,
+          usage_limit: newDisc.usage_limit,
+          scope: newDisc.scope
+        });
+        setDiscounts(prev => [saved, ...prev]);
+        return saved;
+      } catch (err) {
+        console.warn('API addDiscount failed, using fallback:', err.message);
+      }
+    }
+    setDiscounts(prev => [newDisc, ...prev]);
     return newDisc;
   };
 
@@ -1195,7 +1442,10 @@ export function DataProvider({ children }) {
       launchProductDesktop,
       exchangeDesktopCode,
       verifyWebToken,
-      revokeProductSession
+      revokeProductSession,
+      auditLogs,
+      revenueReport,
+      recordLocalAuditLog
     }}>
       {children}
     </DataContext.Provider>

@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import SubscriptionViewSet
+from .views import SubscriptionViewSet, AuditLogListView
 
 urlpatterns = [
     path('subscriptions', SubscriptionViewSet.as_view({'get': 'list', 'post': 'create'}), name='subscription_list'),
@@ -10,4 +10,5 @@ urlpatterns = [
     path('subscriptions/<int:pk>/resume', SubscriptionViewSet.as_view({'post': 'resume'}), name='subscription_resume'),
     path('subscriptions/<int:pk>/renew', SubscriptionViewSet.as_view({'post': 'renew'}), name='subscription_renew'),
     path('subscriptions/<int:pk>/close', SubscriptionViewSet.as_view({'post': 'close'}), name='subscription_close'),
+    path('audit-logs', AuditLogListView.as_view(), name='audit_log_list'),
 ]
