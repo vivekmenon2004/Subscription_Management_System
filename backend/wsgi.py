@@ -14,6 +14,15 @@ if str(backend_dir) not in sys.path:
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'brightloop.settings')
 
 from django.core.wsgi import get_wsgi_application
+from django.core.management import call_command
 
 application = get_wsgi_application()
 
+try:
+    call_command('migrate', interactive=False)
+    from apps.accounts.models import User
+    if not User.objects.filter(role=User.Role.ADMIN).exists():
+        import seed_data
+        seed_data.run_seed()
+except Exception as e:
+    print(f"[WSGI Init] Auto-migration / seed status: {e}")

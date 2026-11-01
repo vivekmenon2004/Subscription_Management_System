@@ -21,7 +21,11 @@ if not SECRET_KEY and DEBUG:
 elif not SECRET_KEY:
     raise ImproperlyConfigured('Set DJANGO_SECRET_KEY in the environment or .env file.')
 
-DEFAULT_ALLOWED_HOSTS = 'localhost,127.0.0.1,[::1],testserver,.onrender.com,subscription-management-system-43vj.onrender.com'
+DEFAULT_ALLOWED_HOSTS = (
+    'localhost,127.0.0.1,[::1],testserver,.onrender.com,'
+    'subscription-management-system-43vj.onrender.com,'
+    'subscription-management-system-wine.vercel.app'
+)
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv('DJANGO_ALLOWED_HOSTS', DEFAULT_ALLOWED_HOSTS).split(',')
@@ -133,14 +137,23 @@ SIMPLE_JWT = {
 }
 
 # CORS & CSRF configuration for Vercel frontend & Render deployment
+DEFAULT_CORS_ORIGINS = (
+    'http://localhost:5173,'
+    'http://127.0.0.1:5173,'
+    'https://subscription-management-system-43vj.onrender.com,'
+    'https://subscription-management-system-wine.vercel.app'
+)
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv(
-        'CORS_ALLOWED_ORIGINS',
-        'http://localhost:5173,http://127.0.0.1:5173,https://subscription-management-system-43vj.onrender.com',
-    ).split(',')
+    for origin in os.getenv('CORS_ALLOWED_ORIGINS', DEFAULT_CORS_ORIGINS).split(',')
     if origin.strip()
 ]
+for req_origin in (
+    'https://subscription-management-system-wine.vercel.app',
+    'https://subscription-management-system-43vj.onrender.com'
+):
+    if req_origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(req_origin)
 
 # Support all Vercel production and preview deployment URLs (*.vercel.app)
 CORS_ALLOWED_ORIGIN_REGEXES = [
@@ -150,14 +163,25 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'false').lower() == 'true'
 CORS_ALLOW_CREDENTIALS = True
 
+DEFAULT_CSRF_ORIGINS = (
+    'http://localhost:5173,'
+    'http://127.0.0.1:5173,'
+    'https://subscription-management-system-43vj.onrender.com,'
+    'https://subscription-management-system-wine.vercel.app,'
+    'https://*.vercel.app,'
+    'https://*.onrender.com'
+)
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
-    for origin in os.getenv(
-        'CSRF_TRUSTED_ORIGINS',
-        'http://localhost:5173,http://127.0.0.1:5173,https://subscription-management-system-43vj.onrender.com,https://*.vercel.app,https://*.onrender.com',
-    ).split(',')
+    for origin in os.getenv('CSRF_TRUSTED_ORIGINS', DEFAULT_CSRF_ORIGINS).split(',')
     if origin.strip()
 ]
+for req_origin in (
+    'https://subscription-management-system-wine.vercel.app',
+    'https://subscription-management-system-43vj.onrender.com'
+):
+    if req_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(req_origin)
 
 SECURE_SSL_REDIRECT = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
