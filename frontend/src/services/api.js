@@ -1,6 +1,18 @@
-const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1'
+const rawBaseUrl = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.NEXT_PUBLIC_API_URL ||
+  (import.meta.env.PROD
+    ? 'https://subscription-management-system-43vj.onrender.com/api/v1'
+    : 'http://127.0.0.1:8000/api/v1')
 ).replace(/\/$/, '');
+
+export const API_BASE_URL = rawBaseUrl.endsWith('/api/v1')
+  ? rawBaseUrl
+  : rawBaseUrl.endsWith('/api')
+  ? `${rawBaseUrl}/v1`
+  : `${rawBaseUrl}/api/v1`;
+
 const ACCESS_TOKEN_KEY = 'brightloop_token';
 const REFRESH_TOKEN_KEY = 'brightloop_refresh_token';
 
